@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 
 import gi
+import cairo
 import pickle 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk
 
 class ListBoxRowWithData(Gtk.ListBoxRow):
+
     def __init__(self, data):
         super(Gtk.ListBoxRow, self).__init__()
         self.data = data
@@ -31,8 +33,14 @@ class ListBoxRowWithData(Gtk.ListBoxRow):
         self.drag_dest_set(Gtk.DestDefaults.ALL, [self.target_entry], Gdk.DragAction.MOVE)
         self.connect("drag-data-received", self.on_drag_data_received)
 
-    def on_drag_begin(self, widget):
-        print("begin")
+    def on_drag_begin(self, widget, drag_context):
+        row = widget.get_ancestor(Gtk.ListBoxRow)
+        listbox = row.get_parent()
+        listbox.select_row(row)
+        surface = cairo.ImageSurface(cairo.Format.ARGB32, row.get_allocated_width(), row.get_allocated_height())
+        context = cairo.Context(surface)
+        row.draw(context)
+        Gtk.drag_set_icon_surface(drag_context, surface)
 
     def on_drag_data_received(self, widget, drag_context, x, y, data, info, time):
         source_index = pickle.loads(data.get_data())
