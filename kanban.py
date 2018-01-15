@@ -15,7 +15,7 @@ class TaskView(Gtk.ListBoxRow):
         self.data = data
         self.set_layout()
         self.set_drag_and_drop()
-
+        
     def set_layout(self):
         self.drag_handle = Gtk.EventBox().new()
         self.drag_handle.add(Gtk.Image().new_from_icon_name("open-menu-symbolic", 1))
@@ -68,9 +68,18 @@ class TaskList(Gtk.ListBox):
     def __init__(self, title):
         super(Gtk.ListBox, self).__init__()
         self.title = title
+        self.connect("row-selected", self.on_row_selected)
 
     def get_title(self):
         return self.title
+
+    def on_row_selected(self, task_list, task_view):
+        if task_view is None:
+            return
+        board = task_list.get_ancestor(KanbanBoard)
+        for title, l in board.lists.items():
+            if title != task_list.get_title():
+                l.get_tasklist().unselect_all()
 
 class KanbanList(Gtk.Box):
 
@@ -80,7 +89,7 @@ class KanbanList(Gtk.Box):
         self.title.set_text(title)
         self.add(self.title)
         self.tasklist = TaskList(title)
-        self.tasklist.set_selection_mode(Gtk.SelectionMode.BROWSE)
+        self.tasklist.set_selection_mode(Gtk.SelectionMode.SINGLE)
         self.add(self.tasklist)
 
     def add_task(self, title):
