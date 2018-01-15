@@ -6,7 +6,9 @@ import pickle
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk
 
-class ListBoxRowWithData(Gtk.ListBoxRow):
+
+
+class TaskView(Gtk.ListBoxRow):
 
     def __init__(self, data):
         super(Gtk.ListBoxRow, self).__init__()
@@ -34,7 +36,7 @@ class ListBoxRowWithData(Gtk.ListBoxRow):
         self.connect("drag-data-received", self.on_drag_data_received)
 
     def on_drag_begin(self, widget, drag_context):
-        row = widget.get_ancestor(Gtk.ListBoxRow)
+        row = widget.get_ancestor(TaskView)
         listbox = row.get_parent()
         listbox.select_row(row)
         surface = cairo.ImageSurface(cairo.Format.ARGB32, row.get_allocated_width(), row.get_allocated_height())
@@ -43,39 +45,75 @@ class ListBoxRowWithData(Gtk.ListBoxRow):
         Gtk.drag_set_icon_surface(drag_context, surface)
 
     def on_drag_data_received(self, widget, drag_context, x, y, data, info, time):
-        source_index = pickle.loads(data.get_data())
-        if source_index == self.get_index():
+        board = widget.get_ancestor(KanbanBoard)
+        source_info = pickle.loads(data.get_data())
+        source_list = board.get_list(source_info["list"]).get_tasklist()
+        target = self
+        target_list = target.get_ancestor(TaskList)
+        if source_info["index"] == target.get_index() and source_info["list"] == target_list.get_title():
             return
-        listbox = self.get_parent()
-        source = listbox.get_row_at_index(source_index)
-        position = self.get_index()
-        listbox.remove(source)
-        listbox.insert(source, position)
+        source = source_list.get_row_at_index(source_info["index"])
+        position = target.get_index()
+        source_list.remove(source)
+        target_list.insert(source, position)
 
     def on_drag_data_get(self, widget, drag_context, data, info, time):
-        data.set(Gdk.Atom.intern_static_string("GTK_LIST_BOX_ROW"), 32, pickle.dumps(self.get_index()))
+        info = dict()
+        info["list"] = widget.get_ancestor(TaskList).get_title()
+        info["index"] = widget.get_ancestor(TaskView).get_index()
+        data.set(Gdk.Atom.intern_static_string("GTK_LIST_BOX_ROW"), 32, pickle.dumps(info))
+
+class TaskList(Gtk.ListBox):
+    
+    def __init__(self, title):
+        super(Gtk.ListBox, self).__init__()
+        self.title = title
+
+    def get_title(self):
+        return self.title
+
+class KanbanList(Gtk.Box):
+
+    def __init__(self, title):
+        super(Gtk.Box, self).__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.title = Gtk.Label()
+        self.title.set_text(title)
+        self.add(self.title)
+        self.tasklist = TaskList(title)
+        self.tasklist.set_selection_mode(Gtk.SelectionMode.BROWSE)
+        self.add(self.tasklist)
+
+    def add_task(self, title):
+        self.tasklist.add(TaskView(title))
+
+    def get_tasklist(self):
+        return self.tasklist
+
+class KanbanBoard(Gtk.Box):
+
+    def __init__(self, title):
+        super(Gtk.Box, self).__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+       
+        self.lists = dict()
+        for listname in "Backlog Ready Doing Done".split():
+            l = KanbanList(listname)
+            self.pack_start(l, True, True, 0)
+            self.lists[listname] = l
+            items = 'test task abc'.split()
+            for item in items:
+                l.add_task(item)
+
+    def get_list(self, name):
+        return self.lists[name]
 
 class KanbanWindow(Gtk.Window):
 
     def __init__(self):
         Gtk.Window.__init__(self, title="Kanaban")
         self.set_border_width(20)
-
-        self.box = Gtk.Box(spacing=6)
-        self.add(self.box)
-
-        listbox = Gtk.ListBox()
-        listbox.set_selection_mode(Gtk.SelectionMode.BROWSE)
-        self.box.pack_start(listbox, True, True, 0)
-       
-        items = 'test task abc'.split()
-
-        for item in items:
-            listbox.add(ListBoxRowWithData(item))
-
-    def on_button_clicked(self, widget):
-        print("Hello")
-
+        self.board = KanbanBoard("Work")
+        self.add(self.board)
+        
 window = KanbanWindow()
 window.connect("destroy", Gtk.main_quit)
 window.show_all()
