@@ -1,12 +1,34 @@
 #!/usr/bin/python3
 
-import gi
 import cairo
-import pickle 
+import pickle
+import sys
+from datetime import datetime
+
+import gi
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk
+from gi.repository import Gtk, Gdk, Gio, GLib
 
+VERSION = "0.1"
 
+MENU_XML = """
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <menu id="app-menu">
+    <section>
+      <item>
+        <attribute name="action">app.about</attribute>
+        <attribute name="label" translatable="yes">_About</attribute>
+      </item>
+      <item>
+        <attribute name="action">app.quit</attribute>
+        <attribute name="label" translatable="yes">_Quit</attribute>
+        <attribute name="accel">&lt;Primary&gt;q</attribute>
+    </item>
+    </section>
+  </menu>
+</interface>
+"""
 
 class TaskView(Gtk.ListBoxRow):
 
@@ -45,11 +67,11 @@ class TaskView(Gtk.ListBoxRow):
         Gtk.drag_set_icon_surface(drag_context, surface)
 
     def on_drag_data_received(self, widget, drag_context, x, y, data, info, time):
-        board = widget.get_ancestor(KanbanBoard)
+        board = widget.get_ancestor(KanbanBoardView)
         source_info = pickle.loads(data.get_data())
         source_list = board.get_list(source_info["list"]).get_tasklist()
         target = self
-        target_list = target.get_ancestor(TaskList)
+        target_list = target.get_ancestor(TaskListView)
         if source_info["index"] == target.get_index() and source_info["list"] == target_list.get_title():
             return
         source = source_list.get_row_at_index(source_info["index"])
@@ -59,11 +81,11 @@ class TaskView(Gtk.ListBoxRow):
 
     def on_drag_data_get(self, widget, drag_context, data, info, time):
         info = dict()
-        info["list"] = widget.get_ancestor(TaskList).get_title()
+        info["list"] = widget.get_ancestor(TaskListView).get_title()
         info["index"] = widget.get_ancestor(TaskView).get_index()
         data.set(Gdk.Atom.intern_static_string("GTK_LIST_BOX_ROW"), 32, pickle.dumps(info))
 
-class TaskList(Gtk.ListBox):
+class TaskListView(Gtk.ListBox):
     
     def __init__(self, title):
         super(Gtk.ListBox, self).__init__()
@@ -76,19 +98,19 @@ class TaskList(Gtk.ListBox):
     def on_row_selected(self, task_list, task_view):
         if task_view is None:
             return
-        board = task_list.get_ancestor(KanbanBoard)
+        board = task_list.get_ancestor(KanbanBoardView)
         for title, l in board.lists.items():
             if title != task_list.get_title():
                 l.get_tasklist().unselect_all()
 
-class KanbanList(Gtk.Box):
+class KanbanListView(Gtk.Box):
 
     def __init__(self, title):
         super(Gtk.Box, self).__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.title = Gtk.Label()
         self.title.set_text(title)
         self.add(self.title)
-        self.tasklist = TaskList(title)
+        self.tasklist = TaskListView(title)
         self.tasklist.set_selection_mode(Gtk.SelectionMode.SINGLE)
         self.add(self.tasklist)
 
@@ -98,14 +120,15 @@ class KanbanList(Gtk.Box):
     def get_tasklist(self):
         return self.tasklist
 
-class KanbanBoard(Gtk.Box):
+class KanbanBoardView(Gtk.Box):
 
     def __init__(self, title):
         super(Gtk.Box, self).__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.title = title
        
         self.lists = dict()
         for listname in "Backlog Ready Doing Done".split():
-            l = KanbanList(listname)
+            l = KanbanListView(listname)
             self.pack_start(l, True, True, 0)
             self.lists[listname] = l
             items = 'test task abc'.split()
@@ -115,16 +138,88 @@ class KanbanBoard(Gtk.Box):
     def get_list(self, name):
         return self.lists[name]
 
-class KanbanWindow(Gtk.Window):
+class KanbanWindow(Gtk.ApplicationWindow):
 
-    def __init__(self):
-        Gtk.Window.__init__(self, title="Kanaban")
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        Gtk.Window.__init__(self, type=Gtk.WindowType.TOPLEVEL, title="Kanaban")
+        self.set_default_icon_name("org.gnome.Todo")
+        self.set_title("Kanban")
         self.set_border_width(20)
-        self.board = KanbanBoard("Work")
-        self.add(self.board)
         
-window = KanbanWindow()
-window.connect("destroy", Gtk.main_quit)
-window.show_all()
-Gtk.main()
+        self.setting = Gio.Settings.new("com.pjakubow.kanban")
+        self.load_settings()
+        self.connect("configure-event", self.save_settings)
+
+        self.board = KanbanBoardView("Work")
+        self.add(self.board)
+        self.board.show_all()
+        
+        self.set_title(self.get_title() + " \u2013 " + self.board.title)
+
+    def load_settings(self):
+        size = self.setting.get_value("window-size")
+        self.resize(size[0], size[1])
+
+        position = self.setting.get_value("window-position")
+        if position.n_children() == 2:
+            self.move(position[0], position[1])
+
+        if self.setting.get_boolean("window-maximized") == True:
+            self.maximize()
+        else:
+            self.unmaximize()
+
+    def save_settings(self, window, event):
+        self.setting.set_boolean("window-maximized", self.is_maximized())
+        w,h = self.get_size()
+        self.setting.set_value("window-size", GLib.Variant("ai", [w, h]))
+        x,y = self.get_position()
+        self.setting.set_value("window-position", GLib.Variant("ai", [x,y]))
+        
+class KanbanApplication(Gtk.Application):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, application_id="com.pjakubow.kanban",**kwargs)
+        self.window = None
+
+    def do_startup(self):
+        Gtk.Application.do_startup(self)
+
+        action = Gio.SimpleAction.new("about", None)
+        action.connect("activate", self.on_about)
+        self.add_action(action)
+
+        action = Gio.SimpleAction.new("quit", None)
+        action.connect("activate", self.on_quit)
+        self.add_action(action)
+
+        builder = Gtk.Builder.new_from_string(MENU_XML, -1)
+        self.set_app_menu(builder.get_object("app-menu"))
+
+    def do_activate(self):
+        # We only allow a single window and raise any existing ones
+        if not self.window:
+            # Windows are associated with the application
+            # when the last one is closed the application shuts down
+            self.window = KanbanWindow(application=self, title="Kanban")
+        self.window.present()
+
+    def on_about(self, action, param):
+        about_dialog = Gtk.AboutDialog(transient_for=self.window, modal=True)
+        authors = [ "Paweł Jakubowski <pawel-jakubowski@hotmail.com>" ]
+        about_dialog.set_version(VERSION)
+        about_dialog.set_authors(authors)
+        about_dialog.set_program_name("Kanban")
+        about_dialog.set_logo_icon_name("org.gnome.Todo")
+        about_dialog.set_copyright("Copyright \xA9 %d\u2013%d The Kanban author" % (2018, datetime.now().year))
+        about_dialog.set_license_type(Gtk.License.MIT_X11)
+        about_dialog.present()
+
+    def on_quit(self, action, param):
+        self.quit()
+
+if __name__ == "__main__":
+    app = KanbanApplication()
+    app.run(sys.argv)
 

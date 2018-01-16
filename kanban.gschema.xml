@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="kanban">
+    <schema id="com.pjakubow.kanban" path="/com/pjakubow/kanban/">
+        <key name="window-maximized" type="b">
+            <default>true</default>
+            <summary>Window maximized</summary>
+            <description>Window maximized state</description>
+        </key>
+        <key name="window-size" type="ai">
+            <default>[800, 600]</default>
+            <summary>Window size</summary>
+            <description>Window size (width and height).</description>
+        </key>
+        <key name="window-position" type="ai">
+            <default>[]</default>
+            <summary>Window position</summary>
+            <description>Window position (x and y).</description>
+        </key>
+    </schema>
+</schemalist>
