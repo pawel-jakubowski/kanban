@@ -30,20 +30,68 @@ MENU_XML = """
 </interface>
 """
 
+### Models
+
+class Task:
+
+    def __init__(self, title):
+        self.title = title
+
+    def __str__(self):
+        return "#%s" % self.title
+
+class TaskList:
+
+    def __init__(self, title):
+        self.title = title
+        self.tasks = [] 
+
+    def __str__(self):
+        list_str = ">" + self.title
+        for t in self.tasks:
+            list_str += "\n" + str(t)
+        return list_str
+
+    def add(self, task):
+        self.tasks.append(task)
+
+    def insert(self, index, task):
+        self.tasks.insert(index, task)
+
+    def remove(self, index):
+        del self.tasks[index]
+
+class Board:
+
+    def __init__(self, title):
+        self.title = title
+        self.tasklists = dict() 
+
+    def __str__(self):
+        board_str = "=== " + self.title + " ==="
+        for key, l in self.tasklists.items():
+            board_str += "\n" + str(l)
+        return board_str
+
+    def add(self, tasklist):
+        self.tasklists[tasklist.title] = tasklist
+
+### Views
+
 class TaskView(Gtk.ListBoxRow):
 
     def __init__(self, data):
         super(Gtk.ListBoxRow, self).__init__()
-        self.data = data
-        self.set_layout()
+        self.data = Task(data)
+        self.set_layout(self.data)
         self.set_drag_and_drop()
         
-    def set_layout(self):
+    def set_layout(self, task):
         self.drag_handle = Gtk.EventBox().new()
         self.drag_handle.add(Gtk.Image().new_from_icon_name("open-menu-symbolic", 1))
         self.titlebox = Gtk.Entry()
         self.titlebox.set_has_frame(False)
-        self.titlebox.set_text(self.data)
+        self.titlebox.set_text(task.title)
         self.box = Gtk.Box(spacing=2)
         self.box.pack_start(self.drag_handle, False, False, 5)
         self.box.pack_start(self.titlebox, True, True, 0)
@@ -76,8 +124,8 @@ class TaskView(Gtk.ListBoxRow):
             return
         source = source_list.get_row_at_index(source_info["index"])
         position = target.get_index()
-        source_list.remove(source)
-        target_list.insert(source, position)
+        source_list.remove_task(source)
+        target_list.insert_task(source, position)
 
     def on_drag_data_get(self, widget, drag_context, data, info, time):
         info = dict()
@@ -90,6 +138,7 @@ class TaskListView(Gtk.ListBox):
     def __init__(self, title):
         super(Gtk.ListBox, self).__init__()
         self.title = title
+        self.data = TaskList(title)
         self.connect("row-selected", self.on_row_selected)
 
     def get_title(self):
@@ -103,6 +152,19 @@ class TaskListView(Gtk.ListBox):
             if title != task_list.get_title():
                 l.get_tasklist().unselect_all()
 
+    def add_task(self, title):
+        task_view = TaskView(title)
+        self.add(task_view)
+        self.data.add(task_view.data)
+   
+    def insert_task(self, task_view, index):
+        self.insert(task_view, index)
+        self.data.insert(index, task_view.data)
+
+    def remove_task(self, task_view):
+        self.data.remove(task_view.get_index())
+        self.remove(task_view)
+
 class KanbanListView(Gtk.Box):
 
     def __init__(self, title):
@@ -114,9 +176,6 @@ class KanbanListView(Gtk.Box):
         self.tasklist.set_selection_mode(Gtk.SelectionMode.SINGLE)
         self.add(self.tasklist)
 
-    def add_task(self, title):
-        self.tasklist.add(TaskView(title))
-
     def get_tasklist(self):
         return self.tasklist
 
@@ -125,15 +184,19 @@ class KanbanBoardView(Gtk.Box):
     def __init__(self, title):
         super(Gtk.Box, self).__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.title = title
-       
+        self.data = Board(title)
         self.lists = dict()
         for listname in "Backlog Ready Doing Done".split():
-            l = KanbanListView(listname)
-            self.pack_start(l, True, True, 0)
-            self.lists[listname] = l
-            items = 'test task abc'.split()
-            for item in items:
-                l.add_task(item)
+            self.add_tasklist(listname)
+            
+    def add_tasklist(self, title):
+        l = KanbanListView(title)
+        self.data.add(l.get_tasklist().data)
+        self.lists[title] = l
+        self.pack_start(l, True, True, 0)
+        items = 'test task abc'.split()
+        for item in items:
+            l.get_tasklist().add_task(item)
 
     def get_list(self, name):
         return self.lists[name]
