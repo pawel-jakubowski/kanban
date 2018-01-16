@@ -76,6 +76,21 @@ class Board:
     def add(self, tasklist):
         self.tasklists[tasklist.title] = tasklist
 
+class KanbanSettings:
+    
+    def __init__(self):
+        self.boards = dict()
+
+    def add_board(self, board):
+        self.boards[board.title] = board
+
+    def save(self):
+        for b in self.boards:
+            print(b)
+
+    def load(self):
+        print("load")
+
 ### Views
 
 class TaskView(Gtk.ListBoxRow):
@@ -211,14 +226,16 @@ class KanbanWindow(Gtk.ApplicationWindow):
         self.set_border_width(20)
         
         self.setting = Gio.Settings.new("com.pjakubow.kanban")
-        self.load_settings()
-        self.connect("configure-event", self.save_settings)
+        self.connect("configure-event", self.save_gsettings)
+        self.user_setting = KanbanSettings()
 
         self.board = KanbanBoardView("Work")
         self.add(self.board)
         self.board.show_all()
+        self.user_setting.add_board(self.board.data)
         
         self.set_title(self.get_title() + " \u2013 " + self.board.title)
+        self.load_settings()
 
     def load_settings(self):
         size = self.setting.get_value("window-size")
@@ -233,7 +250,9 @@ class KanbanWindow(Gtk.ApplicationWindow):
         else:
             self.unmaximize()
 
-    def save_settings(self, window, event):
+        self.user_setting.load()
+
+    def save_gsettings(self, window, event):
         self.setting.set_boolean("window-maximized", self.is_maximized())
         w,h = self.get_size()
         self.setting.set_value("window-size", GLib.Variant("ai", [w, h]))
