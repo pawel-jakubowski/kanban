@@ -4,7 +4,7 @@ import cairo
 import pickle
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, date
 
 import gi
 gi.require_version("Gtk", "3.0")
@@ -37,12 +37,15 @@ class Task:
 
     def __init__(self, title):
         self.title = title
+        self.creation_date = datetime.now().timestamp()
+        self.update_date = self.creation_date
 
     def __str__(self):
         return "#%s" % self.title
 
     def set_title(self, title):
         self.title = title
+        self.update_date = datetime.now().timestamp()
 
 class TaskList:
 
