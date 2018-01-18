@@ -139,21 +139,68 @@ class TaskView(Gtk.ListBoxRow):
         self.connect("modified", lambda widget, title: self.task.set_title(title))
         self.set_layout(self.task)
         self.set_drag_and_drop()
+        self.show_handler = self.connect("show", self.on_show)
+        self.connect("focus-in-event", self.on_focus)
+        self.connect("key-press-event", self.on_key_press)
 
     def set_layout(self, task):
         self.drag_handle = Gtk.EventBox().new()
         self.drag_handle.add(Gtk.Image().new_from_icon_name("open-menu-symbolic", 1))
-        self.titlebox = Gtk.Entry()
-        self.titlebox.set_has_frame(False)
-        self.titlebox.set_text(task.title)
-        self.titlebox.connect("changed", self.on_title_change)
+        self.title = Gtk.Label(task.title)
+        self.title.set_line_wrap(True)
+        self.titlebox = Gtk.TextView()
+        self.titlebox.set_wrap_mode(Gtk.WrapMode.WORD)
+        self.titlebox.set_justification(Gtk.Justification.LEFT)
+        self.titlebox.get_buffer().set_text(task.title)
+        self.titlebox.get_buffer().connect("changed", self.on_title_change)
+        self.titlebox.connect("key-press-event", self.on_key_press)
+        self.editbutton = Gtk.Button.new_from_icon_name("document-edit-symbolic", 1)
+        self.editbutton.connect("clicked", self.on_edit_clicked)
         self.box = Gtk.Box(spacing=2)
         self.box.pack_start(self.drag_handle, False, False, 5)
+        self.box.pack_start(self.title, False, True, 0)
         self.box.pack_start(self.titlebox, True, True, 0)
+        self.box.pack_end(self.editbutton, False, False, 0)
         self.add(self.box)
 
+    def display_titlebox(self):
+        self.title.hide()
+        self.titlebox.get_buffer().set_text(self.title.get_text())
+        self.titlebox.show_all()
+
+    def display_title_label(self):
+        self.titlebox.hide()
+        self.title.show_all()
+
     def on_title_change(self, editable):
-        self.emit("modified", self.titlebox.get_text())
+        buff = self.titlebox.get_buffer()
+        new_title = buff.get_text(buff.get_start_iter(), buff.get_end_iter(), False).strip()
+        self.title.set_text(new_title)
+        self.emit("modified", new_title)
+
+    # Edit
+    def on_key_press(self, widget, event):
+        if widget is self.titlebox:
+            if event.keyval in [Gdk.KEY_Return, Gdk.KEY_Escape]:
+                self.display_title_label()
+        elif widget is self:
+            if event.keyval == Gdk.KEY_Return:
+                self.editbutton.clicked()
+
+    def on_focus(self, widget, event):
+        if self.titlebox.is_visible():
+            self.titlebox.grab_focus()
+
+    def on_show(self, widget):
+        self.titlebox.hide()
+        self.disconnect(self.show_handler)
+
+    def on_edit_clicked(self, button):
+        if self.title.is_visible():
+            self.display_titlebox()
+            self.titlebox.grab_focus()
+        else:
+            self.display_title_label()
 
     # Drag and Drop
 
@@ -249,6 +296,7 @@ class KanbanBoardView(Gtk.Box):
         self.lists = dict()
         for title, l in board.tasklists.items():
             self.add_tasklist(l)
+        self.set_homogeneous(True)
 
     def add_tasklist(self, tasklist):
         self.board.add(tasklist)
