@@ -129,6 +129,20 @@ class KanbanSettings:
         self.add_board(b)
 
 ### Views
+class TaskEntry(Gtk.TextView):
+
+    def __init__(self, data = ""):
+        super(Gtk.TextView, self).__init__()
+        self.set_wrap_mode(Gtk.WrapMode.WORD)
+        self.set_justification(Gtk.Justification.LEFT)
+        self.set_text(data)
+
+    def set_text(self, text):
+        self.get_buffer().set_text(text)
+
+    def get_text(self):
+        buff = self.get_buffer()
+        return buff.get_text(buff.get_start_iter(), buff.get_end_iter(), False)
 
 class TaskView(Gtk.ListBoxRow):
 
@@ -151,10 +165,7 @@ class TaskView(Gtk.ListBoxRow):
         self.drag_handle.add(Gtk.Image().new_from_icon_name("open-menu-symbolic", 1))
         self.title = Gtk.Label(task.title)
         self.title.set_line_wrap(True)
-        self.titlebox = Gtk.TextView()
-        self.titlebox.set_wrap_mode(Gtk.WrapMode.WORD)
-        self.titlebox.set_justification(Gtk.Justification.LEFT)
-        self.titlebox.get_buffer().set_text(task.title)
+        self.titlebox = TaskEntry(task.title)
         self.titlebox.get_buffer().connect("changed", self.on_title_change)
         self.titlebox.connect("key-press-event", self.on_key_press)
         self.editbutton = Gtk.Button.new_from_icon_name("document-edit-symbolic", 1)
@@ -168,7 +179,7 @@ class TaskView(Gtk.ListBoxRow):
 
     def display_titlebox(self):
         self.title.hide()
-        self.titlebox.get_buffer().set_text(self.title.get_text())
+        self.titlebox.set_text(self.title.get_text())
         self.titlebox.show_all()
 
     def display_title_label(self):
@@ -176,8 +187,7 @@ class TaskView(Gtk.ListBoxRow):
         self.title.show_all()
 
     def on_title_change(self, editable):
-        buff = self.titlebox.get_buffer()
-        new_title = buff.get_text(buff.get_start_iter(), buff.get_end_iter(), False).strip()
+        new_title = self.titlebox.get_text().strip()
         self.title.set_text(new_title)
         self.emit("modified", new_title)
 
@@ -243,6 +253,14 @@ class TaskView(Gtk.ListBoxRow):
         info["index"] = widget.get_ancestor(TaskView).get_index()
         data.set(Gdk.Atom.intern_static_string("GTK_LIST_BOX_ROW"), 32, pickle.dumps(info))
 
+class NewTaskView(Gtk.ListBoxRow):
+
+    def __init__(self):
+        super(Gtk.ListBoxRow, self).__init__()
+        icon = Gtk.Image().new_from_icon_name("list-add-symbolic", 1)
+        self.box = Gtk.Box()
+        self.add(icon)
+
 class TaskListView(Gtk.ListBox):
 
     def __init__(self, tasklist):
@@ -252,6 +270,7 @@ class TaskListView(Gtk.ListBox):
         for t in tasklist.tasks:
             task_view = TaskView(t)
             self.add(task_view)
+        self.add(NewTaskView())
 
     def get_title(self):
         return self.tasklist.title
