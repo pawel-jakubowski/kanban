@@ -131,11 +131,17 @@ class KanbanSettings:
 ### Views
 class TaskEntry(Gtk.TextView):
 
+    __gsignals__ = {
+        "modified-save": (GObject.SIGNAL_RUN_FIRST, None, ()),
+        "modified-cancel": (GObject.SIGNAL_RUN_FIRST, None, ())
+    }
+
     def __init__(self, data = ""):
         super(Gtk.TextView, self).__init__()
         self.set_wrap_mode(Gtk.WrapMode.WORD)
         self.set_justification(Gtk.Justification.LEFT)
         self.set_text(data)
+        self.connect("key-press-event", self.on_key_press)
 
     def set_text(self, text):
         self.get_buffer().set_text(text)
@@ -143,6 +149,13 @@ class TaskEntry(Gtk.TextView):
     def get_text(self):
         buff = self.get_buffer()
         return buff.get_text(buff.get_start_iter(), buff.get_end_iter(), False)
+
+    def on_key_press(self, widget, event):
+        if event.keyval == Gdk.KEY_Return:
+            self.emit("modified-save")
+        elif event.keyval == Gdk.KEY_Escape:
+            self.emit("modified-cancel")
+
 
 class TaskView(Gtk.ListBoxRow):
 
@@ -167,7 +180,8 @@ class TaskView(Gtk.ListBoxRow):
         self.title.set_line_wrap(True)
         self.titlebox = TaskEntry(task.title)
         self.titlebox.get_buffer().connect("changed", self.on_title_change)
-        self.titlebox.connect("key-press-event", self.on_key_press)
+        self.titlebox.connect("modified-save", self.on_modified_save)
+        self.titlebox.connect("modified-cancel", self.on_modified_save)
         self.editbutton = Gtk.Button.new_from_icon_name("document-edit-symbolic", 1)
         self.editbutton.connect("clicked", self.on_edit_clicked)
         self.box = Gtk.Box(spacing=2)
@@ -193,12 +207,11 @@ class TaskView(Gtk.ListBoxRow):
 
     # Edit
     def on_key_press(self, widget, event):
-        if widget is self.titlebox:
-            if event.keyval in [Gdk.KEY_Return, Gdk.KEY_Escape]:
-                self.display_title_label()
-        elif widget is self:
-            if event.keyval == Gdk.KEY_Return:
-                self.editbutton.clicked()
+        if widget is self and event.keyval == Gdk.KEY_Return:
+            self.editbutton.clicked()
+
+    def on_modified_save(self, widget):
+        self.display_title_label()
 
     def on_focus(self, widget, event):
         if self.titlebox.is_visible():
