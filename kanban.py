@@ -4,6 +4,7 @@ import cairo
 import pickle
 import sys
 import os
+import signal
 from datetime import datetime, date
 
 import gi
@@ -184,6 +185,7 @@ class TaskView(Gtk.ListBoxRow):
         self.titlebox.connect("modified-cancel", self.on_modified_save)
         self.editbutton = Gtk.Button.new_from_icon_name("document-edit-symbolic", 1)
         self.editbutton.connect("clicked", self.on_edit_clicked)
+        self.editbutton.set_can_focus(False)
         self.box = Gtk.Box(spacing=2)
         self.box.pack_start(self.drag_handle, False, False, 5)
         self.box.pack_start(self.title, False, True, 0)
@@ -212,6 +214,7 @@ class TaskView(Gtk.ListBoxRow):
 
     def on_modified_save(self, widget):
         self.display_title_label()
+        self.grab_focus()
 
     def on_focus(self, widget, event):
         if self.titlebox.is_visible():
@@ -270,9 +273,58 @@ class NewTaskView(Gtk.ListBoxRow):
 
     def __init__(self):
         super(Gtk.ListBoxRow, self).__init__()
-        icon = Gtk.Image().new_from_icon_name("list-add-symbolic", 1)
+        self.icon = Gtk.Image().new_from_icon_name("list-add-symbolic", 1)
+        self.title = Gtk.Label()
+        self.titlebox = TaskEntry()
+        self.titlebox.connect("modified-save", self.on_modified_save)
         self.box = Gtk.Box()
-        self.add(icon)
+        self.box.pack_start(self.icon, False, False, 5)
+        self.box.pack_start(self.title, False, True, 0)
+        self.box.pack_start(self.titlebox, True, True, 0)
+        self.add(self.box)
+        self.show_handler = self.connect("show", self.on_show)
+        self.connect("focus-in-event", self.on_focus)
+        self.connect("key-press-event", self.on_key_press)
+        self.connect("button-press-event", self.on_button_press)
+
+    def display_titlebox(self):
+        self.title.hide()
+        self.titlebox.set_text(self.title.get_text())
+        self.titlebox.show_all()
+
+    def display_title_label(self):
+        self.titlebox.hide()
+        self.title.show_all()
+
+    def toggle_title(self):
+        if self.title.is_visible():
+            self.display_titlebox()
+            self.titlebox.grab_focus()
+        else:
+            self.display_title_label()
+
+    def on_button_press(self, widget, event):
+        print(event.keyval)
+        if widget is self and event.keyval == Gdk.BUTTON_PRIMARY:
+            self.toggle_title()
+
+    def on_key_press(self, widget, event):
+        if widget is self and event.keyval == Gdk.KEY_Return:
+            self.toggle_title()
+
+    def on_focus(self, widget, event):
+        if self.titlebox.is_visible():
+            self.titlebox.grab_focus()
+
+    def on_modified_save(self, widget):
+        task = Task(widget.get_text().strip())
+        self.get_ancestor(TaskListView).add_task(task)
+        self.display_title_label()
+        self.grab_focus()
+
+    def on_show(self, widget):
+        self.titlebox.hide()
+        self.disconnect(self.show_handler)
 
 class TaskListView(Gtk.ListBox):
 
@@ -298,8 +350,10 @@ class TaskListView(Gtk.ListBox):
 
     def add_task(self, task):
         task_view = TaskView(task)
-        self.add(task_view)
         self.tasklist.add(task_view.task)
+        # insert before NewTaskView
+        self.insert(task_view, len(self.tasklist.tasks)-1)
+        task_view.show_all()
 
     def insert_task(self, task_view, index):
         self.insert(task_view, index)
@@ -436,6 +490,8 @@ class KanbanApplication(Gtk.Application):
             self.window.user_settings.save()
 
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
     app = KanbanApplication()
-    app.run(sys.argv)
+    exit_status = app.run(sys.argv)
+    sys.exit(exit_status)
 
