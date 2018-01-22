@@ -19,6 +19,12 @@ MENU_XML = """
   <menu id="app-menu">
     <section>
       <item>
+        <attribute name="import">app.import</attribute>
+        <attribute name="label" translatable="yes">_Import</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
         <attribute name="action">app.about</attribute>
         <attribute name="label" translatable="yes">_About</attribute>
       </item>
@@ -540,6 +546,10 @@ class KanbanApplication(Gtk.Application):
     def do_startup(self):
         Gtk.Application.do_startup(self)
 
+        action = Gio.SimpleAction.new("import", None)
+        action.connect("activate", self.on_import)
+        self.add_action(action)
+
         action = Gio.SimpleAction.new("about", None)
         action.connect("activate", self.on_about)
         self.add_action(action)
@@ -570,6 +580,9 @@ class KanbanApplication(Gtk.Application):
             self.user_settings.config_dir = os.path.dirname(os.path.abspath(__file__)) + "/.debug_data/"
         self.activate()
         return 0
+
+    def on_import(self, action, param):
+        print("popup import")
 
     def on_about(self, action, param):
         about_dialog = Gtk.AboutDialog(transient_for=self.window, modal=True)
