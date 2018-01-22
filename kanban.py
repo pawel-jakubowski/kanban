@@ -7,9 +7,11 @@ import os
 import signal
 from datetime import datetime, date
 
+import importer.trello
+
 import gi
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk, Gio, GLib, GObject
+from gi.repository import Gtk, Gdk, Gio, GLib, GObject, Pango
 
 VERSION = "0.1"
 
@@ -19,8 +21,8 @@ MENU_XML = """
   <menu id="app-menu">
     <section>
       <item>
-        <attribute name="import">app.import</attribute>
-        <attribute name="label" translatable="yes">_Import</attribute>
+        <attribute name="action">app.trello-import</attribute>
+        <attribute name="label" translatable="yes">_Import from trello</attribute>
       </item>
     </section>
     <section>
@@ -68,6 +70,11 @@ class TaskList:
             list_str += "\n" + str(t)
         return list_str
 
+    def add_new(self, title):
+        task = Task(title)
+        self.tasks.append(task)
+        return task
+
     def add(self, task):
         self.tasks.append(task)
 
@@ -89,6 +96,11 @@ class Board:
         for key, l in self.tasklists.items():
             board_str += "\n" + str(l)
         return board_str
+
+    def add_new(self, title):
+        tasklist = TaskList(title)
+        self.add(tasklist)
+        return tasklist
 
     def add(self, tasklist):
         self.tasklists[tasklist.title] = tasklist
@@ -151,7 +163,7 @@ class TaskEntry(Gtk.TextView):
 
     def __init__(self, data=""):
         super(Gtk.TextView, self).__init__()
-        self.set_wrap_mode(Gtk.WrapMode.WORD)
+        self.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
         self.set_justification(Gtk.Justification.LEFT)
         self.set_text(data)
         self.connect("key-press-event", self.on_key_press)
@@ -193,6 +205,8 @@ class TaskView(Gtk.ListBoxRow):
             Gtk.Image().new_from_icon_name("open-menu-symbolic", 1))
         self.title = Gtk.Label(task.title)
         self.title.set_line_wrap(True)
+        self.title.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        self.title.set_xalign(0)
         self.titlebox = TaskEntry(task.title)
         self.titlebox.get_buffer().connect("changed", self.on_title_change)
         self.titlebox.connect("modified-save", self.on_modified_save)
@@ -211,7 +225,7 @@ class TaskView(Gtk.ListBoxRow):
             buttonsbox.pack_start(button, False, False, 0)
         self.box = Gtk.Box(spacing=2)
         self.box.pack_start(self.drag_handle, False, False, 5)
-        self.box.pack_start(self.title, False, True, 0)
+        self.box.pack_start(self.title, False, False, 0)
         self.box.pack_start(self.titlebox, True, True, 0)
         self.box.pack_end(buttonsbox, False, False, 0)
         self.add(self.box)
@@ -447,10 +461,13 @@ class KanbanListView(Gtk.Box):
             orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.title = Gtk.Label()
         self.title.set_text(tasklist.title)
-        self.add(self.title)
+        self.pack_start(self.title, False, False, 0)
         self.tasklist = TaskListView(tasklist)
         self.tasklist.set_selection_mode(Gtk.SelectionMode.SINGLE)
-        self.add(self.tasklist)
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scrolled.add(self.tasklist)
+        self.pack_start(scrolled, True, True, 0)
 
     def get_tasklist(self):
         return self.tasklist
@@ -462,10 +479,8 @@ class KanbanBoardView(Gtk.Box):
         super(Gtk.Box, self).__init__(
             orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.board = board
-        self.lists = []
-        for title, l in board.tasklists.items():
-            self.add_tasklist(l)
         self.set_homogeneous(True)
+        self.refresh()
 
     def add_tasklist(self, tasklist):
         self.board.add(tasklist)
@@ -484,6 +499,16 @@ class KanbanBoardView(Gtk.Box):
 
     def get_title(self):
         return self.board.title
+
+    def clear(self):
+        for child in self.get_children():
+            child.destroy()
+        self.lists = []
+
+    def refresh(self):
+        self.clear()
+        for title, l in self.board.tasklists.items():
+            self.add_tasklist(l)
 
 
 class KanbanWindow(Gtk.ApplicationWindow):
@@ -537,7 +562,8 @@ class KanbanWindow(Gtk.ApplicationWindow):
 class KanbanApplication(Gtk.Application):
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, application_id="com.pjakubow.kanban", flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE, **kwargs)
+        super().__init__(*args, application_id="com.pjakubow.kanban",
+                         flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE, **kwargs)
         self.window = None
         self.connect("shutdown", self.on_quit)
         self.add_main_option("debug", ord("d"), GLib.OptionFlags.NONE,
@@ -546,8 +572,8 @@ class KanbanApplication(Gtk.Application):
     def do_startup(self):
         Gtk.Application.do_startup(self)
 
-        action = Gio.SimpleAction.new("import", None)
-        action.connect("activate", self.on_import)
+        action = Gio.SimpleAction.new("trello-import", None)
+        action.connect("activate", self.on_trello_import)
         self.add_action(action)
 
         action = Gio.SimpleAction.new("about", None)
@@ -568,7 +594,8 @@ class KanbanApplication(Gtk.Application):
             # when the last one is closed the application shuts down
             if not hasattr(self, "user_settings"):
                 self.user_settings = KanbanSettings()
-            self.window = KanbanWindow(application=self, title="Kanban", user_settings=self.user_settings)
+            self.window = KanbanWindow(
+                application=self, title="Kanban", user_settings=self.user_settings)
         self.window.present()
 
     def do_command_line(self, command_line):
@@ -577,12 +604,32 @@ class KanbanApplication(Gtk.Application):
             # This is printed on the main instance
             print("Debug mode selected")
             self.user_settings = KanbanSettings()
-            self.user_settings.config_dir = os.path.dirname(os.path.abspath(__file__)) + "/.debug_data/"
+            self.user_settings.config_dir = os.path.dirname(
+                os.path.abspath(__file__)) + "/.debug_data/"
         self.activate()
         return 0
 
-    def on_import(self, action, param):
-        print("popup import")
+    def on_trello_import(self, action, param):
+        dialog = Gtk.FileChooserDialog("Please choose a trello json file", self.window,
+                                       Gtk.FileChooserAction.OPEN,
+                                       (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                                        Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
+        filter_json = Gtk.FileFilter()
+        filter_json.set_name("json files")
+        filter_json.add_mime_type("application/json")
+        dialog.add_filter(filter_json)
+        response = dialog.run()
+        if response == Gtk.ResponseType.OK:
+            confirmdialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.WARNING,
+                                              Gtk.ButtonsType.YES_NO, "Do you want to clear current tasks? THIS CANNOT BE REVERTED.")
+            response = confirmdialog.run()
+            if response == Gtk.ResponseType.YES:
+                self.user_settings.boards["Work"] = Board("Work")
+            importer.trello.import_data(
+                self.user_settings, dialog.get_filename())
+            self.window.get_child().refresh()
+            confirmdialog.destroy()
+        dialog.destroy()
 
     def on_about(self, action, param):
         about_dialog = Gtk.AboutDialog(transient_for=self.window, modal=True)
