@@ -482,7 +482,7 @@ class KanbanBoardView(Gtk.Box):
 
 class KanbanWindow(Gtk.ApplicationWindow):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, user_settings=KanbanSettings(), *args, **kwargs):
         super().__init__(*args, **kwargs)
         Gtk.Window.__init__(
             self, type=Gtk.WindowType.TOPLEVEL, title="Kanaban")
@@ -492,7 +492,7 @@ class KanbanWindow(Gtk.ApplicationWindow):
 
         self.settings = Gio.Settings.new("com.pjakubow.kanban")
         self.connect("configure-event", self.save_gsettings)
-        self.user_settings = KanbanSettings()
+        self.user_settings = user_settings
 
         self.load_settings()
         self.draw_boards()
@@ -502,7 +502,6 @@ class KanbanWindow(Gtk.ApplicationWindow):
             boardview = KanbanBoardView(b)
             self.add(boardview)
             boardview.show_all()
-
             self.set_title(self.get_title() + " \u2013 " +
                            boardview.get_title())
 
@@ -532,9 +531,11 @@ class KanbanWindow(Gtk.ApplicationWindow):
 class KanbanApplication(Gtk.Application):
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, application_id="com.pjakubow.kanban", **kwargs)
+        super().__init__(*args, application_id="com.pjakubow.kanban", flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE, **kwargs)
         self.window = None
         self.connect("shutdown", self.on_quit)
+        self.add_main_option("debug", ord("d"), GLib.OptionFlags.NONE,
+                             GLib.OptionArg.NONE, "Debug Mode", None)
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -555,8 +556,20 @@ class KanbanApplication(Gtk.Application):
         if not self.window:
             # Windows are associated with the application
             # when the last one is closed the application shuts down
-            self.window = KanbanWindow(application=self, title="Kanban")
+            if not hasattr(self, "user_settings"):
+                self.user_settings = KanbanSettings()
+            self.window = KanbanWindow(application=self, title="Kanban", user_settings=self.user_settings)
         self.window.present()
+
+    def do_command_line(self, command_line):
+        options = command_line.get_options_dict()
+        if options.contains("debug"):
+            # This is printed on the main instance
+            print("Debug mode selected")
+            self.user_settings = KanbanSettings()
+            self.user_settings.config_dir = os.path.dirname(os.path.abspath(__file__)) + "/.debug_data/"
+        self.activate()
+        return 0
 
     def on_about(self, action, param):
         about_dialog = Gtk.AboutDialog(transient_for=self.window, modal=True)
