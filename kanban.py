@@ -224,6 +224,27 @@ class TaskView(Gtk.ListBoxRow):
         self.title.set_text(new_title)
         self.emit("modified", new_title)
 
+    # Move
+    def move_to_next_list(self):
+        board = self.get_ancestor(KanbanBoardView)
+        current_list = self.get_ancestor(TaskListView)
+        current_list_index = board.get_list_index(current_list.get_title())
+        if current_list_index >= len(board.lists):
+            return
+        next_list = board.get_list(current_list_index + 1).get_tasklist()
+        current_list.remove_task(self)
+        next_list.insert_task(self, 0)
+
+    def move_to_prev_list(self):
+        board = self.get_ancestor(KanbanBoardView)
+        current_list = self.get_ancestor(TaskListView)
+        current_list_index = board.get_list_index(current_list.get_title())
+        if current_list_index == 0:
+            return
+        prev_list = board.get_list(current_list_index - 1).get_tasklist()
+        current_list.remove_task(self)
+        prev_list.insert_task(self, 0)
+
     # Delete
 
     def on_delete_clicked(self, button):
@@ -241,10 +262,17 @@ class TaskView(Gtk.ListBoxRow):
     def on_key_press(self, widget, event):
         if widget is not self:
             return
-        if event.keyval == Gdk.KEY_Return:
+        k = event.keyval
+        if k == Gdk.KEY_Return:
             self.buttons["edit"].clicked()
-        elif event.keyval == Gdk.KEY_Delete:
+        elif k == Gdk.KEY_Delete:
             self.buttons["delete"].clicked()
+        elif k == Gdk.KEY_greater:
+            self.move_to_next_list()
+            self.grab_focus()
+        elif k == Gdk.KEY_less:
+            self.move_to_prev_list()
+            self.grab_focus()
 
     def on_modified_save(self, widget):
         self.display_title_label()
@@ -291,7 +319,8 @@ class TaskView(Gtk.ListBoxRow):
     def on_drag_data_received(self, widget, drag_context, x, y, data, info, time):
         board = widget.get_ancestor(KanbanBoardView)
         source_info = pickle.loads(data.get_data())
-        source_list = board.get_list(source_info["list"]).get_tasklist()
+        source_list_index = board.get_list_index(source_info["list"])
+        source_list = board.get_list(source_list_index).get_tasklist()
         target = self
         target_list = target.get_ancestor(TaskListView)
         if source_info["index"] == target.get_index() and source_info["list"] == target_list.get_title():
@@ -385,8 +414,8 @@ class TaskListView(Gtk.ListBox):
         if task_view is None:
             return
         board = task_list.get_ancestor(KanbanBoardView)
-        for title, l in board.lists.items():
-            if title != task_list.get_title():
+        for l in board.lists:
+            if l.get_tasklist() is not task_list:
                 l.get_tasklist().unselect_all()
 
     def add_task(self, task):
@@ -427,7 +456,7 @@ class KanbanBoardView(Gtk.Box):
         super(Gtk.Box, self).__init__(
             orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.board = board
-        self.lists = dict()
+        self.lists = []
         for title, l in board.tasklists.items():
             self.add_tasklist(l)
         self.set_homogeneous(True)
@@ -435,11 +464,17 @@ class KanbanBoardView(Gtk.Box):
     def add_tasklist(self, tasklist):
         self.board.add(tasklist)
         l = KanbanListView(tasklist)
-        self.lists[tasklist.title] = l
+        self.lists.append(l)
         self.pack_start(l, True, True, 0)
 
-    def get_list(self, name):
-        return self.lists[name]
+    def get_list(self, index):
+        return self.lists[index]
+
+    def get_list_index(self, name):
+        for i, l in enumerate(self.lists):
+            if l.get_tasklist().get_title() == name:
+                return i
+        return None
 
     def get_title(self):
         return self.board.title
