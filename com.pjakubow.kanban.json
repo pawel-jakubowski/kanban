@@ -1,0 +1,38 @@
+{
+  "app-id": "com.pjakubow.kanban",
+  "runtime": "org.gnome.Platform",
+  "runtime-version": "3.26",
+  "sdk": "org.gnome.Sdk",
+  "command": "kanban.py",
+  "finish-args": [
+        "--share=ipc", "--socket=x11",
+        "--socket=wayland",
+        "--share=network",
+        "--filesystem=xdg-run/dconf", "--filesystem=~/.config/dconf:ro",
+        "--talk-name=ca.desrt.dconf", "--env=DCONF_USER_CONFIG_DIR=.config/dconf"
+  ],
+  "modules": [
+    {
+      "name": "kanban",
+      "buildsystem": "simple",
+      "build-commands": [
+        "install -D kanban.py /app/bin/kanban.py"
+      ],
+      "sources": [
+        {
+          "type": "file",
+          "path": "kanban.py"
+        },
+        {
+          "type": "file",
+          "path": "kanban.gschema.xml"
+        }
+      ],
+      "post-install": [
+        "mkdir -p /app/share/glib-2.0/schemas",
+        "mv kanban.gschema.xml /app/share/glib-2.0/schemas",
+        "glib-compile-schemas /app/share/glib-2.0/schemas"
+      ]
+    }
+  ]
+}
