@@ -32,7 +32,8 @@ MENU_XML = """
 </interface>
 """
 
-### Models
+# Models
+
 
 class Task:
 
@@ -47,6 +48,7 @@ class Task:
     def set_title(self, title):
         self.title = title
         self.update_date = datetime.now().timestamp()
+
 
 class TaskList:
 
@@ -69,6 +71,7 @@ class TaskList:
     def remove(self, index):
         del self.tasks[index]
 
+
 class Board:
 
     def __init__(self, title):
@@ -83,6 +86,7 @@ class Board:
 
     def add(self, tasklist):
         self.tasklists[tasklist.title] = tasklist
+
 
 class KanbanSettings:
 
@@ -129,7 +133,9 @@ class KanbanSettings:
                 l.add(Task(item))
         self.add_board(b)
 
-### Views
+# Views
+
+
 class TaskEntry(Gtk.TextView):
 
     __gsignals__ = {
@@ -137,7 +143,7 @@ class TaskEntry(Gtk.TextView):
         "modified-cancel": (GObject.SIGNAL_RUN_FIRST, None, ())
     }
 
-    def __init__(self, data = ""):
+    def __init__(self, data=""):
         super(Gtk.TextView, self).__init__()
         self.set_wrap_mode(Gtk.WrapMode.WORD)
         self.set_justification(Gtk.Justification.LEFT)
@@ -167,7 +173,8 @@ class TaskView(Gtk.ListBoxRow):
     def __init__(self, task):
         super(Gtk.ListBoxRow, self).__init__()
         self.task = task
-        self.connect("modified", lambda widget, title: self.task.set_title(title))
+        self.connect("modified", lambda widget,
+                     title: self.task.set_title(title))
         self.set_layout(self.task)
         self.set_drag_and_drop()
         self.show_handler = self.connect("show", self.on_show)
@@ -176,21 +183,31 @@ class TaskView(Gtk.ListBoxRow):
 
     def set_layout(self, task):
         self.drag_handle = Gtk.EventBox().new()
-        self.drag_handle.add(Gtk.Image().new_from_icon_name("open-menu-symbolic", 1))
+        self.drag_handle.add(
+            Gtk.Image().new_from_icon_name("open-menu-symbolic", 1))
         self.title = Gtk.Label(task.title)
         self.title.set_line_wrap(True)
         self.titlebox = TaskEntry(task.title)
         self.titlebox.get_buffer().connect("changed", self.on_title_change)
         self.titlebox.connect("modified-save", self.on_modified_save)
         self.titlebox.connect("modified-cancel", self.on_modified_save)
-        self.editbutton = Gtk.Button.new_from_icon_name("document-edit-symbolic", 1)
-        self.editbutton.connect("clicked", self.on_edit_clicked)
-        self.editbutton.set_can_focus(False)
+        self.buttons = dict()
+        self.buttons["edit"] = Gtk.Button.new_from_icon_name(
+            "document-edit-symbolic", 1)
+        self.buttons["edit"].connect("clicked", self.on_edit_clicked)
+        self.buttons["edit"].set_can_focus(False)
+        self.buttons["delete"] = Gtk.Button.new_from_icon_name(
+            "user-trash-full-symbolic", 1)
+        self.buttons["delete"].connect("clicked", self.on_delete_clicked)
+        self.buttons["delete"].set_can_focus(False)
+        buttonsbox = Gtk.Box(spacing=1)
+        for name, button in self.buttons.items():
+            buttonsbox.pack_start(button, False, False, 0)
         self.box = Gtk.Box(spacing=2)
         self.box.pack_start(self.drag_handle, False, False, 5)
         self.box.pack_start(self.title, False, True, 0)
         self.box.pack_start(self.titlebox, True, True, 0)
-        self.box.pack_end(self.editbutton, False, False, 0)
+        self.box.pack_end(buttonsbox, False, False, 0)
         self.add(self.box)
 
     def display_titlebox(self):
@@ -207,10 +224,27 @@ class TaskView(Gtk.ListBoxRow):
         self.title.set_text(new_title)
         self.emit("modified", new_title)
 
+    # Delete
+
+    def on_delete_clicked(self, button):
+        listview = self.get_ancestor(TaskListView)
+        index = self.get_index()
+        if index > 0:
+            index -= 1
+        listview.remove_task(self)
+        row = listview.get_row_at_index(index)
+        listview.select_row(row)
+        row.grab_focus()
+
     # Edit
+
     def on_key_press(self, widget, event):
-        if widget is self and event.keyval == Gdk.KEY_Return:
-            self.editbutton.clicked()
+        if widget is not self:
+            return
+        if event.keyval == Gdk.KEY_Return:
+            self.buttons["edit"].clicked()
+        elif event.keyval == Gdk.KEY_Delete:
+            self.buttons["delete"].clicked()
 
     def on_modified_save(self, widget):
         self.display_title_label()
@@ -234,18 +268,22 @@ class TaskView(Gtk.ListBoxRow):
     # Drag and Drop
 
     def set_drag_and_drop(self):
-        self.target_entry = Gtk.TargetEntry.new("GTK_LIST_BOX_ROW", Gtk.TargetFlags.SAME_APP, 0)
-        self.drag_handle.drag_source_set(Gdk.ModifierType.BUTTON1_MASK, [self.target_entry], Gdk.DragAction.MOVE)
+        self.target_entry = Gtk.TargetEntry.new(
+            "GTK_LIST_BOX_ROW", Gtk.TargetFlags.SAME_APP, 0)
+        self.drag_handle.drag_source_set(Gdk.ModifierType.BUTTON1_MASK, [
+                                         self.target_entry], Gdk.DragAction.MOVE)
         self.drag_handle.connect("drag-begin", self.on_drag_begin)
         self.drag_handle.connect("drag-data-get", self.on_drag_data_get)
-        self.drag_dest_set(Gtk.DestDefaults.ALL, [self.target_entry], Gdk.DragAction.MOVE)
+        self.drag_dest_set(Gtk.DestDefaults.ALL, [
+                           self.target_entry], Gdk.DragAction.MOVE)
         self.connect("drag-data-received", self.on_drag_data_received)
 
     def on_drag_begin(self, widget, drag_context):
         row = widget.get_ancestor(TaskView)
         listbox = row.get_parent()
         listbox.select_row(row)
-        surface = cairo.ImageSurface(cairo.Format.ARGB32, row.get_allocated_width(), row.get_allocated_height())
+        surface = cairo.ImageSurface(
+            cairo.Format.ARGB32, row.get_allocated_width(), row.get_allocated_height())
         context = cairo.Context(surface)
         row.draw(context)
         Gtk.drag_set_icon_surface(drag_context, surface)
@@ -267,7 +305,9 @@ class TaskView(Gtk.ListBoxRow):
         info = dict()
         info["list"] = widget.get_ancestor(TaskListView).get_title()
         info["index"] = widget.get_ancestor(TaskView).get_index()
-        data.set(Gdk.Atom.intern_static_string("GTK_LIST_BOX_ROW"), 32, pickle.dumps(info))
+        data.set(Gdk.Atom.intern_static_string(
+            "GTK_LIST_BOX_ROW"), 32, pickle.dumps(info))
+
 
 class NewTaskView(Gtk.ListBoxRow):
 
@@ -326,6 +366,7 @@ class NewTaskView(Gtk.ListBoxRow):
         self.titlebox.hide()
         self.disconnect(self.show_handler)
 
+
 class TaskListView(Gtk.ListBox):
 
     def __init__(self, tasklist):
@@ -352,7 +393,7 @@ class TaskListView(Gtk.ListBox):
         task_view = TaskView(task)
         self.tasklist.add(task_view.task)
         # insert before NewTaskView
-        self.insert(task_view, len(self.tasklist.tasks)-1)
+        self.insert(task_view, len(self.tasklist.tasks) - 1)
         task_view.show_all()
 
     def insert_task(self, task_view, index):
@@ -363,10 +404,12 @@ class TaskListView(Gtk.ListBox):
         self.tasklist.remove(task_view.get_index())
         self.remove(task_view)
 
+
 class KanbanListView(Gtk.Box):
 
     def __init__(self, tasklist):
-        super(Gtk.Box, self).__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        super(Gtk.Box, self).__init__(
+            orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.title = Gtk.Label()
         self.title.set_text(tasklist.title)
         self.add(self.title)
@@ -377,10 +420,12 @@ class KanbanListView(Gtk.Box):
     def get_tasklist(self):
         return self.tasklist
 
+
 class KanbanBoardView(Gtk.Box):
 
     def __init__(self, board):
-        super(Gtk.Box, self).__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        super(Gtk.Box, self).__init__(
+            orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.board = board
         self.lists = dict()
         for title, l in board.tasklists.items():
@@ -399,11 +444,13 @@ class KanbanBoardView(Gtk.Box):
     def get_title(self):
         return self.board.title
 
+
 class KanbanWindow(Gtk.ApplicationWindow):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        Gtk.Window.__init__(self, type=Gtk.WindowType.TOPLEVEL, title="Kanaban")
+        Gtk.Window.__init__(
+            self, type=Gtk.WindowType.TOPLEVEL, title="Kanaban")
         self.set_default_icon_name("org.gnome.Todo")
         self.set_title("Kanban")
         self.set_border_width(20)
@@ -421,7 +468,8 @@ class KanbanWindow(Gtk.ApplicationWindow):
             self.add(boardview)
             boardview.show_all()
 
-            self.set_title(self.get_title() + " \u2013 " + boardview.get_title())
+            self.set_title(self.get_title() + " \u2013 " +
+                           boardview.get_title())
 
     def load_settings(self):
         size = self.settings.get_value("window-size")
@@ -440,15 +488,16 @@ class KanbanWindow(Gtk.ApplicationWindow):
 
     def save_gsettings(self, window, event):
         self.settings.set_boolean("window-maximized", self.is_maximized())
-        w,h = self.get_size()
+        w, h = self.get_size()
         self.settings.set_value("window-size", GLib.Variant("ai", [w, h]))
-        x,y = self.get_position()
-        self.settings.set_value("window-position", GLib.Variant("ai", [x,y]))
+        x, y = self.get_position()
+        self.settings.set_value("window-position", GLib.Variant("ai", [x, y]))
+
 
 class KanbanApplication(Gtk.Application):
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, application_id="com.pjakubow.kanban",**kwargs)
+        super().__init__(*args, application_id="com.pjakubow.kanban", **kwargs)
         self.window = None
         self.connect("shutdown", self.on_quit)
 
@@ -476,12 +525,13 @@ class KanbanApplication(Gtk.Application):
 
     def on_about(self, action, param):
         about_dialog = Gtk.AboutDialog(transient_for=self.window, modal=True)
-        authors = [ "Paweł Jakubowski <pawel-jakubowski@hotmail.com>" ]
+        authors = ["Paweł Jakubowski <pawel-jakubowski@hotmail.com>"]
         about_dialog.set_version(VERSION)
         about_dialog.set_authors(authors)
         about_dialog.set_program_name("Kanban")
         about_dialog.set_logo_icon_name("org.gnome.Todo")
-        about_dialog.set_copyright("Copyright \xA9 %d\u2013%d The Kanban author" % (2018, datetime.now().year))
+        about_dialog.set_copyright(
+            "Copyright \xA9 %d\u2013%d The Kanban author" % (2018, datetime.now().year))
         about_dialog.set_license_type(Gtk.License.MIT_X11)
         about_dialog.present()
 
@@ -494,4 +544,3 @@ if __name__ == "__main__":
     app = KanbanApplication()
     exit_status = app.run(sys.argv)
     sys.exit(exit_status)
-
