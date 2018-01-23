@@ -8,6 +8,9 @@ import signal
 from datetime import datetime, date
 
 import importer.trello
+from model.Task import Task
+from model.TaskList import TaskList
+from model.Board import Board
 
 import gi
 gi.require_version("Gtk", "3.0")
@@ -39,72 +42,6 @@ MENU_XML = """
   </menu>
 </interface>
 """
-
-# Models
-
-
-class Task:
-
-    def __init__(self, title):
-        self.title = title
-        self.creation_date = datetime.now().timestamp()
-        self.update_date = self.creation_date
-
-    def __str__(self):
-        return "#%s" % self.title
-
-    def set_title(self, title):
-        self.title = title
-        self.update_date = datetime.now().timestamp()
-
-
-class TaskList:
-
-    def __init__(self, title):
-        self.title = title
-        self.tasks = []
-
-    def __str__(self):
-        list_str = ">" + self.title
-        for t in self.tasks:
-            list_str += "\n" + str(t)
-        return list_str
-
-    def add_new(self, title):
-        task = Task(title)
-        self.tasks.append(task)
-        return task
-
-    def add(self, task):
-        self.tasks.append(task)
-
-    def insert(self, index, task):
-        self.tasks.insert(index, task)
-
-    def remove(self, index):
-        del self.tasks[index]
-
-
-class Board:
-
-    def __init__(self, title):
-        self.title = title
-        self.tasklists = dict()
-
-    def __str__(self):
-        board_str = "=== " + self.title + " ==="
-        for key, l in self.tasklists.items():
-            board_str += "\n" + str(l)
-        return board_str
-
-    def add_new(self, title):
-        tasklist = TaskList(title)
-        self.add(tasklist)
-        return tasklist
-
-    def add(self, tasklist):
-        self.tasklists[tasklist.title] = tasklist
-
 
 class KanbanSettings:
 
@@ -152,7 +89,6 @@ class KanbanSettings:
         self.add_board(b)
 
 # Views
-
 
 class TaskEntry(Gtk.TextView):
 
