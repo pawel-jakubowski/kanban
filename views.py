@@ -247,7 +247,6 @@ class NewTaskView(Gtk.ListBoxRow):
             self.display_title_label()
 
     def on_button_press(self, widget, event):
-        print(event.keyval)
         if widget is self and event.keyval == Gdk.BUTTON_PRIMARY:
             self.toggle_title()
 
@@ -281,12 +280,16 @@ class TaskListView(Gtk.ListBox):
         self.tasklist = tasklist
         self.connect("row-selected", self.on_row_selected)
         for t in tasklist.tasks:
-            task_view = TaskView(t)
-            self.add(task_view)
+            self.add(TaskView(t))
         self.add(NewTaskView())
 
     def get_title(self):
         return self.tasklist.title
+
+    def set_uneditable(self):
+        for task_view in self.get_children():
+            if not task_view.is_selected() and task_view.titlebox.is_visible():
+                task_view.display_title_label()
 
     def on_row_selected(self, task_list, task_view):
         if task_view is None:
@@ -295,6 +298,8 @@ class TaskListView(Gtk.ListBox):
         for l in board.lists:
             if l.get_tasklist() is not task_list:
                 l.get_tasklist().unselect_all()
+                l.get_tasklist().set_uneditable()
+        self.set_uneditable()
 
     def add_task(self, task):
         task_view = TaskView(task)
