@@ -1,5 +1,6 @@
 from model.Task import Task
 
+
 class TaskList:
 
     def __init__(self, title):

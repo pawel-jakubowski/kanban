@@ -99,7 +99,7 @@ class TaskView(Gtk.ListBoxRow):
 
     # Move
     def move_to_next_list(self):
-        board = self.get_ancestor(KanbanBoardView)
+        board = self.get_ancestor(BoardView)
         current_list = self.get_ancestor(TaskListView)
         current_list_index = board.get_list_index(current_list.get_title())
         if current_list_index >= len(board.lists):
@@ -109,7 +109,7 @@ class TaskView(Gtk.ListBoxRow):
         next_list.insert_task(self, 0)
 
     def move_to_prev_list(self):
-        board = self.get_ancestor(KanbanBoardView)
+        board = self.get_ancestor(BoardView)
         current_list = self.get_ancestor(TaskListView)
         current_list_index = board.get_list_index(current_list.get_title())
         if current_list_index == 0:
@@ -190,7 +190,7 @@ class TaskView(Gtk.ListBoxRow):
         Gtk.drag_set_icon_surface(drag_context, surface)
 
     def on_drag_data_received(self, widget, drag_context, x, y, data, info, time):
-        board = widget.get_ancestor(KanbanBoardView)
+        board = widget.get_ancestor(BoardView)
         source_info = pickle.loads(data.get_data())
         source_list_index = board.get_list_index(source_info["list"])
         source_list = board.get_list(source_list_index).get_tasklist()
@@ -294,7 +294,7 @@ class TaskListView(Gtk.ListBox):
     def on_row_selected(self, task_list, task_view):
         if task_view is None:
             return
-        board = task_list.get_ancestor(KanbanBoardView)
+        board = task_list.get_ancestor(BoardView)
         for l in board.lists:
             if l.get_tasklist() is not task_list:
                 l.get_tasklist().unselect_all()
@@ -336,13 +336,24 @@ class KanbanListView(Gtk.Box):
         return self.tasklist
 
 
-class KanbanBoardView(Gtk.Box):
+class BoardView(Gtk.Box):
 
-    def __init__(self, board):
+    def __init__(self, board, window):
         super(Gtk.Box, self).__init__(
             orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.board = board
+        self.window = window
         self.set_homogeneous(True)
+
+        hb = Gtk.HeaderBar(show_close_button=True)
+        hb.props.title = self.window.appname + " \u2013 " + self.board.title
+        self.window.set_titlebar(hb)
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        button = Gtk.Button()
+        button.add(Gtk.Arrow(Gtk.ArrowType.LEFT, Gtk.ShadowType.NONE))
+        box.add(button)
+        hb.pack_start(box)
+
         self.refresh()
 
     def add_tasklist(self, tasklist):
@@ -372,3 +383,28 @@ class KanbanBoardView(Gtk.Box):
         self.clear()
         for title, l in self.board.tasklists.items():
             self.add_tasklist(l)
+
+
+class BoardListView(Gtk.ScrolledWindow):
+
+    def __init__(self, boards, window):
+        super(Gtk.ScrolledWindow, self).__init__()
+        self.boards = boards
+        self.window = window
+        self.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+
+        hb = Gtk.HeaderBar(show_close_button=True)
+        hb.props.title = self.window.appname
+        self.window.set_titlebar(hb)
+
+        self.flowbox = Gtk.FlowBox()
+        self.flowbox.set_valign(Gtk.Align.START)
+        self.flowbox.set_max_children_per_line(30)
+        self.flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.add(self.flowbox)
+        self.refresh()
+
+    def refresh(self):
+        for board in self.boards:
+            button = Gtk.Button.new_with_label(board)
+            self.flowbox.add(button)

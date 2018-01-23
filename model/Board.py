@@ -1,5 +1,6 @@
 from model.TaskList import TaskList
 
+
 class Board:
 
     def __init__(self, title):

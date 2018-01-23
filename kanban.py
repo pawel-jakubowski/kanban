@@ -88,32 +88,30 @@ class KanbanWindow(Gtk.ApplicationWindow):
     def __init__(self, user_settings=KanbanSettings(), *args, **kwargs):
         super().__init__(*args, **kwargs)
         Gtk.Window.__init__(
-            self, type=Gtk.WindowType.TOPLEVEL, title="Kanaban")
+            self, type=Gtk.WindowType.TOPLEVEL)
+        self.appname = "Kanban"
+        self.set_title(self.appname)
         self.set_default_icon_name("org.gnome.Todo")
+        self.set_icon_name("org.gnome.Todo")
         self.set_border_width(20)
-
-        hb = Gtk.HeaderBar(title="Kanban", show_close_button=True)
-        self.set_titlebar(hb)
-
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        button = Gtk.Button()
-        button.add(Gtk.Arrow(Gtk.ArrowType.LEFT, Gtk.ShadowType.NONE))
-        box.add(button)
-
-        hb.pack_start(box)
 
         self.settings = Gio.Settings.new("com.pjakubow.kanban")
         self.connect("configure-event", self.save_gsettings)
         self.user_settings = user_settings
 
         self.load_settings()
-        self.draw_boards()
+        # self.draw_boards_list()
+        self.draw_board("Work")
 
-    def draw_boards(self):
-        for title, b in self.user_settings.boards.items():
-            boardview = KanbanBoardView(b)
-            self.add(boardview)
-            self.get_titlebar().props.title += " \u2013 " + boardview.get_title()
+    def draw_boards_list(self):
+        self.clean()
+        self.add(BoardListView(self.user_settings.boards, self))
+        self.show_all()
+
+    def draw_board(self, name):
+        self.clean()
+        boardview = BoardView(self.user_settings.boards[name], self)
+        self.add(boardview)
         self.show_all()
 
     def load_settings(self):
@@ -131,15 +129,27 @@ class KanbanWindow(Gtk.ApplicationWindow):
 
         self.user_settings.load()
 
+        board = self.settings.get_string("selected-board")
+        if board != "" and board in self.user_settings.boards:
+            self.draw_board(board)
+        else:
+            print("board set to", board, " - draw default")
+            self.draw_board("Work")
+
     def save_gsettings(self, window, event):
         self.settings.set_boolean("window-maximized", self.is_maximized())
         w, h = self.get_size()
         self.settings.set_value("window-size", GLib.Variant("ai", [w, h]))
         x, y = self.get_position()
         self.settings.set_value("window-position", GLib.Variant("ai", [x, y]))
+        if isinstance(self.get_child(), BoardView):
+            self.settings.set_string(
+                "selected-board", self.get_child().get_title())
 
     def clean(self):
-        self.get_child().destroy()
+        child = self.get_child()
+        if child is not None:
+            child.destroy()
 
 
 class KanbanApplication(Gtk.Application):
@@ -206,8 +216,7 @@ class KanbanApplication(Gtk.Application):
                 self.user_settings.boards["Work"] = Board("Work")
             importer.trello.import_data(
                 self.user_settings, dialog.get_filename())
-            self.window.clean()
-            self.window.draw_boards()
+            self.window.draw_board("Work")
             confirmdialog.destroy()
         dialog.destroy()
 
