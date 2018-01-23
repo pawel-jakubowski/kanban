@@ -302,6 +302,7 @@ class NewTaskView(Gtk.ListBoxRow):
         self.title = Gtk.Label()
         self.titlebox = TaskEntry()
         self.titlebox.connect("modified-save", self.on_modified_save)
+        self.titlebox.connect("modified-cancel", self.on_modified_cancel)
         self.box = Gtk.Box()
         self.box.pack_start(self.icon, False, False, 5)
         self.box.pack_start(self.title, False, True, 0)
@@ -344,6 +345,10 @@ class NewTaskView(Gtk.ListBoxRow):
     def on_modified_save(self, widget):
         task = Task(widget.get_text().strip())
         self.get_ancestor(TaskListView).add_task(task)
+        self.display_title_label()
+        self.grab_focus()
+
+    def on_modified_cancel(self, widget):
         self.display_title_label()
         self.grab_focus()
 
