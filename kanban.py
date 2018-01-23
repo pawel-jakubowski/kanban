@@ -518,8 +518,21 @@ class KanbanWindow(Gtk.ApplicationWindow):
         Gtk.Window.__init__(
             self, type=Gtk.WindowType.TOPLEVEL, title="Kanaban")
         self.set_default_icon_name("org.gnome.Todo")
-        self.set_title("Kanban")
+        # self.set_title("Kanban")
         self.set_border_width(20)
+
+        hb = Gtk.HeaderBar()
+        hb.set_show_close_button(True)
+        hb.props.title = "Kanban"
+        self.set_titlebar(hb)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        Gtk.StyleContext.add_class(box.get_style_context(), "linked")
+        button = Gtk.Button()
+        button.add(Gtk.Arrow(Gtk.ArrowType.LEFT, Gtk.ShadowType.NONE))
+        box.add(button)
+
+        hb.pack_start(box)
 
         self.settings = Gio.Settings.new("com.pjakubow.kanban")
         self.connect("configure-event", self.save_gsettings)
@@ -532,9 +545,8 @@ class KanbanWindow(Gtk.ApplicationWindow):
         for title, b in self.user_settings.boards.items():
             boardview = KanbanBoardView(b)
             self.add(boardview)
-            boardview.show_all()
-            self.set_title(self.get_title() + " \u2013 " +
-                           boardview.get_title())
+            self.get_titlebar().props.title += " \u2013 " + boardview.get_title()
+        self.show_all()
 
     def load_settings(self):
         size = self.settings.get_value("window-size")
@@ -560,6 +572,7 @@ class KanbanWindow(Gtk.ApplicationWindow):
 
     def clean(self):
         self.get_child().destroy()
+
 
 class KanbanApplication(Gtk.Application):
 
