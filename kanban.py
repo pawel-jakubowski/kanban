@@ -100,8 +100,6 @@ class KanbanWindow(Gtk.ApplicationWindow):
         self.user_settings = user_settings
 
         self.load_settings()
-        # self.draw_boards_list()
-        self.draw_board("Work")
 
     def draw_boards_list(self):
         self.clean()
@@ -133,8 +131,7 @@ class KanbanWindow(Gtk.ApplicationWindow):
         if board != "" and board in self.user_settings.boards:
             self.draw_board(board)
         else:
-            print("board set to", board, " - draw default")
-            self.draw_board("Work")
+            self.draw_boards_list()
 
     def save_gsettings(self, window, event):
         self.settings.set_boolean("window-maximized", self.is_maximized())
@@ -145,6 +142,8 @@ class KanbanWindow(Gtk.ApplicationWindow):
         if isinstance(self.get_child(), BoardView):
             self.settings.set_string(
                 "selected-board", self.get_child().get_title())
+        else:
+            self.settings.set_string("selected-board", "")
 
     def clean(self):
         child = self.get_child()
@@ -234,6 +233,7 @@ class KanbanApplication(Gtk.Application):
 
     def on_quit(self, param):
         if self.window is not None:
+            self.window.save_gsettings(self.window, None)
             self.window.user_settings.save()
 
 if __name__ == "__main__":

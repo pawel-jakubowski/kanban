@@ -351,6 +351,7 @@ class BoardView(Gtk.Box):
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         button = Gtk.Button()
         button.add(Gtk.Arrow(Gtk.ArrowType.LEFT, Gtk.ShadowType.NONE))
+        button.connect("clicked", self.on_back_clicked)
         box.add(button)
         hb.pack_start(box)
 
@@ -371,6 +372,9 @@ class BoardView(Gtk.Box):
                 return i
         return None
 
+    def on_back_clicked(self, button):
+        self.window.draw_boards_list()
+
     def get_title(self):
         return self.board.title
 
@@ -385,6 +389,17 @@ class BoardView(Gtk.Box):
             self.add_tasklist(l)
 
 
+class BoardListRow(Gtk.ListBoxRow):
+
+    def __init__(self, title):
+        super(Gtk.ListBoxRow, self).__init__()
+        self.title = Gtk.Label(title)
+        self.add(self.title)
+
+    def get_title(self):
+        return self.title.get_text()
+
+
 class BoardListView(Gtk.ScrolledWindow):
 
     def __init__(self, boards, window):
@@ -395,16 +410,22 @@ class BoardListView(Gtk.ScrolledWindow):
 
         hb = Gtk.HeaderBar(show_close_button=True)
         hb.props.title = self.window.appname
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        button = Gtk.Button.new_with_label("New Board")
+        button.set_sensitive(False)
+        box.add(button)
+        hb.pack_start(box)
         self.window.set_titlebar(hb)
 
-        self.flowbox = Gtk.FlowBox()
-        self.flowbox.set_valign(Gtk.Align.START)
-        self.flowbox.set_max_children_per_line(30)
-        self.flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
-        self.add(self.flowbox)
+        self.list = Gtk.ListBox()
+        self.list.set_selection_mode(Gtk.SelectionMode.SINGLE)
+        self.list.connect("row-activated", self.on_row_activated)
+        self.add(self.list)
         self.refresh()
 
     def refresh(self):
         for board in self.boards:
-            button = Gtk.Button.new_with_label(board)
-            self.flowbox.add(button)
+            self.list.add(BoardListRow(board))
+
+    def on_row_activated(self, listbox, row):
+        self.window.draw_board(row.get_title())
