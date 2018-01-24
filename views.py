@@ -9,7 +9,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, Gio, GLib, GObject, Pango
 
 
-class TaskEntry(Gtk.TextView):
+class TextEntry(Gtk.TextView):
 
     __gsignals__ = {
         "modified-save": (GObject.SIGNAL_RUN_FIRST, None, ()),
@@ -37,6 +37,70 @@ class TaskEntry(Gtk.TextView):
             self.emit("modified-cancel")
 
 
+class ActivableTextEntry(Gtk.Box):
+
+    __gsignals__ = {
+        "changed": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
+        "save": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
+        "cancel": (GObject.SIGNAL_RUN_FIRST, None, ()),
+        "editable-state-changed": (GObject.SIGNAL_RUN_FIRST, None, (bool,)),
+    }
+
+    def __init__(self, data=""):
+        super(Gtk.Box, self).__init__()
+        self.show_handler = self.connect("show", self.on_show)
+
+        self.label = Gtk.Label(data)
+        self.label.set_line_wrap(True)
+        self.label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        self.label.set_xalign(0)
+        self.entry = TextEntry(data)
+        self.entry.get_buffer().connect("changed", self.on_text_change)
+        self.entry.connect("modified-save", self.on_modified_save)
+        self.entry.connect("modified-cancel", self.on_modified_cancel)
+        self.pack_start(self.label, True, True, 0)
+        self.pack_start(self.entry, True, True, 0)
+
+    def clear(self):
+        self.entry.set_text("")
+        self.label.set_text("")
+
+    def is_editable(self):
+        return self.entry.is_visible()
+
+    def editable(self):
+        self.label.hide()
+        self.entry.set_text(self.label.get_text())
+        self.entry.show_all()
+        self.entry.grab_focus()
+        self.emit("editable-state-changed", True)
+
+    def uneditable(self):
+        self.entry.hide()
+        self.label.show_all()
+        self.entry.set_text("")
+        self.emit("editable-state-changed", False)
+
+    def on_text_change(self, editable):
+        if not self.is_editable():
+            return
+        new_text = self.entry.get_text().strip()
+        self.label.set_text(new_text)
+        self.emit("changed", new_text)
+
+    def on_modified_save(self, widget):
+        self.emit("save", self.entry.get_text().strip())
+        self.uneditable()
+
+    def on_modified_cancel(self, widget):
+        self.emit("cancel")
+        self.uneditable()
+
+    def on_show(self, widget):
+        self.entry.hide()
+        self.disconnect(self.show_handler)
+
+
 class TaskView(Gtk.ListBoxRow):
 
     __gsignals__ = {
@@ -50,7 +114,6 @@ class TaskView(Gtk.ListBoxRow):
                      title: self.task.set_title(title))
         self.set_layout(self.task)
         self.set_drag_and_drop()
-        self.show_handler = self.connect("show", self.on_show)
         self.connect("focus-in-event", self.on_focus)
         self.connect("key-press-event", self.on_key_press)
 
@@ -58,14 +121,9 @@ class TaskView(Gtk.ListBoxRow):
         self.drag_handle = Gtk.EventBox().new()
         self.drag_handle.add(
             Gtk.Image().new_from_icon_name("open-menu-symbolic", 1))
-        self.title = Gtk.Label(task.title)
-        self.title.set_line_wrap(True)
-        self.title.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
-        self.title.set_xalign(0)
-        self.titlebox = TaskEntry(task.title)
-        self.titlebox.get_buffer().connect("changed", self.on_title_change)
-        self.titlebox.connect("modified-save", self.on_modified_save)
-        self.titlebox.connect("modified-cancel", self.on_modified_save)
+        self.entry = ActivableTextEntry(task.title)
+        self.entry.connect("changed", self.on_modified)
+        self.entry.connect("editable-state-changed", self.on_editable_changed)
         self.buttons = dict()
         self.buttons["edit"] = Gtk.Button.new_from_icon_name(
             "document-edit-symbolic", 1)
@@ -80,24 +138,16 @@ class TaskView(Gtk.ListBoxRow):
             buttonsbox.pack_start(button, False, False, 0)
         self.box = Gtk.Box(spacing=2)
         self.box.pack_start(self.drag_handle, False, False, 5)
-        self.box.pack_start(self.title, False, False, 0)
-        self.box.pack_start(self.titlebox, True, True, 0)
+        self.box.pack_start(self.entry, True, True, 0)
         self.box.pack_end(buttonsbox, False, False, 0)
         self.add(self.box)
 
-    def display_titlebox(self):
-        self.title.hide()
-        self.titlebox.set_text(self.title.get_text())
-        self.titlebox.show_all()
+    def on_modified(self, widget, title):
+        self.emit("modified", title)
 
-    def display_title_label(self):
-        self.titlebox.hide()
-        self.title.show_all()
-
-    def on_title_change(self, editable):
-        new_title = self.titlebox.get_text().strip()
-        self.title.set_text(new_title)
-        self.emit("modified", new_title)
+    def on_editable_changed(self, widget, is_editable):
+        if not is_editable:
+            self.grab_focus()
 
     # Move
     def move_to_next_list(self):
@@ -149,24 +199,15 @@ class TaskView(Gtk.ListBoxRow):
             self.move_to_prev_list()
             self.grab_focus()
 
-    def on_modified_save(self, widget):
-        self.display_title_label()
-        self.grab_focus()
-
     def on_focus(self, widget, event):
-        if self.titlebox.is_visible():
-            self.titlebox.grab_focus()
-
-    def on_show(self, widget):
-        self.titlebox.hide()
-        self.disconnect(self.show_handler)
+        if self.entry.is_editable():
+            self.entry.entry.grab_focus()  # TODO: entry.grab_focus() should be enough
 
     def on_edit_clicked(self, button):
-        if self.title.is_visible():
-            self.display_titlebox()
-            self.titlebox.grab_focus()
+        if self.entry.is_editable():
+            self.entry.uneditable()
         else:
-            self.display_title_label()
+            self.entry.editable()
 
     # Drag and Drop
 
@@ -218,35 +259,23 @@ class NewTaskView(Gtk.ListBoxRow):
     def __init__(self):
         super(Gtk.ListBoxRow, self).__init__()
         self.icon = Gtk.Image().new_from_icon_name("list-add-symbolic", 1)
-        self.title = Gtk.Label()
-        self.titlebox = TaskEntry()
-        self.titlebox.connect("modified-save", self.on_modified_save)
-        self.titlebox.connect("modified-cancel", self.on_modified_cancel)
+        self.entry = ActivableTextEntry()
+        self.entry.connect("editable-state-changed", self.on_editable_changed)
+        self.entry.connect("save", self.on_save)
+        self.entry.connect("cancel", self.on_cancel)
         self.box = Gtk.Box()
         self.box.pack_start(self.icon, False, False, 5)
-        self.box.pack_start(self.title, False, True, 0)
-        self.box.pack_start(self.titlebox, True, True, 0)
+        self.box.pack_start(self.entry, True, True, 0)
         self.add(self.box)
-        self.show_handler = self.connect("show", self.on_show)
         self.connect("focus-in-event", self.on_focus)
         self.connect("key-press-event", self.on_key_press)
         self.connect("button-press-event", self.on_button_press)
 
-    def display_titlebox(self):
-        self.title.hide()
-        self.titlebox.set_text(self.title.get_text())
-        self.titlebox.show_all()
-
-    def display_title_label(self):
-        self.titlebox.hide()
-        self.title.show_all()
-
     def toggle_title(self):
-        if self.title.is_visible():
-            self.display_titlebox()
-            self.titlebox.grab_focus()
+        if self.entry.is_editable():
+            self.entry.uneditable(self)
         else:
-            self.display_title_label()
+            self.entry.editable()
 
     def on_button_press(self, widget, event):
         if widget is self and event.keyval == Gdk.BUTTON_PRIMARY:
@@ -257,22 +286,20 @@ class NewTaskView(Gtk.ListBoxRow):
             self.toggle_title()
 
     def on_focus(self, widget, event):
-        if self.titlebox.is_visible():
-            self.titlebox.grab_focus()
+        if self.entry.is_editable():
+            self.entry.entry.grab_focus()  # TODO: fix
 
-    def on_modified_save(self, widget):
-        task = Task(widget.get_text().strip())
+    def on_save(self, widget, text):
+        task = Task(text)
         self.get_ancestor(TaskListView).add_task(task)
-        self.display_title_label()
-        self.grab_focus()
+        widget.clear()
 
-    def on_modified_cancel(self, widget):
-        self.display_title_label()
-        self.grab_focus()
+    def on_cancel(self, widget):
+        widget.clear()
 
-    def on_show(self, widget):
-        self.titlebox.hide()
-        self.disconnect(self.show_handler)
+    def on_editable_changed(self, widget, is_editable):
+        if not is_editable:
+            self.grab_focus()
 
 
 class TaskListView(Gtk.ListBox):
@@ -290,8 +317,8 @@ class TaskListView(Gtk.ListBox):
 
     def set_uneditable(self):
         for task_view in self.get_children():
-            if not task_view.is_selected() and task_view.titlebox.is_visible():
-                task_view.display_title_label()
+            if not task_view.is_selected() and task_view.entry.is_editable():
+                task_view.entry.uneditable()
 
     def on_row_selected(self, task_list, task_view):
         if task_view is None:
