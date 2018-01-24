@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-import cairo
 import pickle
 import sys
 import os

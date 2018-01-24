@@ -2,6 +2,8 @@ from model.Task import Task
 from model.TaskList import TaskList
 from model.Board import Board
 
+import cairo
+import pickle
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, Gio, GLib, GObject, Pango
