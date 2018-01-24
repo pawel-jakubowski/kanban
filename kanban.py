@@ -98,17 +98,20 @@ class KanbanWindow(Gtk.ApplicationWindow):
         self.connect("configure-event", self.save_gsettings)
         self.user_settings = user_settings
 
+        self.active_board = ""
         self.load_settings()
 
     def draw_boards_list(self):
         self.clean()
         self.add(BoardListView(self.user_settings.boards, self))
+        self.active_board = ""
         self.show_all()
 
     def draw_board(self, name):
         self.clean()
         boardview = BoardView(self.user_settings.boards[name], self)
         self.add(boardview)
+        self.active_board = name
         self.show_all()
 
     def load_settings(self):
@@ -138,11 +141,7 @@ class KanbanWindow(Gtk.ApplicationWindow):
         self.settings.set_value("window-size", GLib.Variant("ai", [w, h]))
         x, y = self.get_position()
         self.settings.set_value("window-position", GLib.Variant("ai", [x, y]))
-        if isinstance(self.get_child(), BoardView):
-            self.settings.set_string(
-                "selected-board", self.get_child().get_title())
-        else:
-            self.settings.set_string("selected-board", "")
+        self.settings.set_string("selected-board", self.active_board)
 
     def clean(self):
         child = self.get_child()
