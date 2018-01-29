@@ -37,6 +37,18 @@ MENU_XML = """
     </item>
     </section>
   </menu>
+  <menu id="menu-bar">
+    <section id="Edit">
+      <item>
+        <attribute name="move-up">task.move_up</attribute>
+        <attribute name="label" translatable="yes">Move up</attribute>
+      </item>
+      <item>
+        <attribute name="move-down">task.move_down</attribute>
+        <attribute name="label" translatable="yes">Move down</attribute>
+      </item>
+    </section>
+  </menu>
 </interface>
 """
 
@@ -173,6 +185,13 @@ class KanbanApplication(Gtk.Application):
         action = Gio.SimpleAction.new("quit", None)
         action.connect("activate", self.on_quit)
         self.add_action(action)
+
+        self.actions = {
+            "move-up": Gio.SimpleAction.new("move-up", None),
+            "move-down": Gio.SimpleAction.new("move-down", None)
+        }
+        for a in self.actions:
+            self.add_action(a)
 
         builder = Gtk.Builder.new_from_string(MENU_XML, -1)
         self.set_app_menu(builder.get_object("app-menu"))
