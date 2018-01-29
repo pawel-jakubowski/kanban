@@ -326,9 +326,7 @@ class TaskListView(Gtk.ListBox):
         board = task_list.get_ancestor(BoardView)
         for l in board.lists:
             if l.get_tasklist() is not task_list:
-                selected_row = l.get_tasklist().get_selected_row()
-                if selected_row is not None:
-                    l.get_tasklist().unselect_row(selected_row)
+                l.get_tasklist().unselect_all()
                 l.get_tasklist().set_uneditable()
         self.set_uneditable()
 
