@@ -13,7 +13,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, Gio, GLib, GObject, Pango
 
-VERSION = "0.2"
+VERSION = "0.3"
 
 MENU_XML = """
 <?xml version="1.0" encoding="UTF-8"?>
@@ -94,6 +94,9 @@ class KanbanWindow(Gtk.ApplicationWindow):
         self.set_icon_name("org.gnome.Todo")
         self.set_border_width(20)
 
+        self.accelerators = Gtk.AccelGroup()
+        self.add_accel_group(self.accelerators)
+
         self.settings = Gio.Settings.new("com.pjakubow.kanban")
         self.connect("configure-event", self.save_gsettings)
         self.user_settings = user_settings
@@ -147,6 +150,10 @@ class KanbanWindow(Gtk.ApplicationWindow):
         child = self.get_child()
         if child is not None:
             child.destroy()
+
+    def bind_accelerator(self, widget, accelerator, signal='clicked'):
+        key, mod = Gtk.accelerator_parse(accelerator)
+        widget.add_accelerator(signal, self.accelerators, key, mod, Gtk.AccelFlags.VISIBLE)
 
 
 class KanbanApplication(Gtk.Application):

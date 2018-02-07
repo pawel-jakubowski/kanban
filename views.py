@@ -107,7 +107,7 @@ class TaskView(Gtk.ListBoxRow):
         "modified": (GObject.SIGNAL_RUN_FIRST, None, (str,))
     }
 
-    def __init__(self, task):
+    def __init__(self, task, board):
         super(Gtk.ListBoxRow, self).__init__()
         self.task = task
         self.connect("modified", lambda widget,
@@ -116,6 +116,8 @@ class TaskView(Gtk.ListBoxRow):
         self.set_drag_and_drop()
         self.connect("focus-in-event", self.on_focus)
         self.connect("key-press-event", self.on_key_press)
+        board.connect("task-move-up", lambda w: self.move_up())
+        board.connect("task-move-down", lambda w: self.move_down())
 
     def set_layout(self, task):
         self.drag_handle = Gtk.EventBox().new()
@@ -150,6 +152,24 @@ class TaskView(Gtk.ListBoxRow):
             self.grab_focus()
 
     # Move
+    def move_up(self):
+        if self.is_selected():
+            task_list = self.get_ancestor(TaskListView)
+            position = self.get_index()
+            if position > 0:
+                task_list.remove_task(self)
+                task_list.insert_task(self, position-1)
+                self.grab_focus()
+
+    def move_down(self):
+        if self.is_selected():
+            task_list = self.get_ancestor(TaskListView)
+            position = self.get_index()
+            if position < len(task_list.tasklist.tasks)-1:
+                task_list.remove_task(self)
+                task_list.insert_task(self, position+1)
+                self.grab_focus()
+
     def move_to_next_list(self):
         board = self.get_ancestor(BoardView)
         current_list = self.get_ancestor(TaskListView)
@@ -278,7 +298,7 @@ class NewTaskView(Gtk.ListBoxRow):
             self.entry.editable()
 
     def on_button_press(self, widget, event):
-        if widget is self and event.keyval == Gdk.BUTTON_PRIMARY:
+        if widget is self and event.button == Gdk.BUTTON_PRIMARY:
             self.toggle_title()
 
     def on_key_press(self, widget, event):
@@ -304,12 +324,14 @@ class NewTaskView(Gtk.ListBoxRow):
 
 class TaskListView(Gtk.ListBox):
 
-    def __init__(self, tasklist):
+    def __init__(self, tasklist, board):
         super(Gtk.ListBox, self).__init__()
         self.tasklist = tasklist
         self.connect("row-selected", self.on_row_selected)
+        self.board = board
         for t in tasklist.tasks:
-            self.add(TaskView(t))
+            task_view = TaskView(t, board)
+            self.add(task_view)
         self.add(NewTaskView())
 
     def get_title(self):
@@ -331,7 +353,7 @@ class TaskListView(Gtk.ListBox):
         self.set_uneditable()
 
     def add_task(self, task):
-        task_view = TaskView(task)
+        task_view = TaskView(task, board)
         self.tasklist.add(task_view.task)
         # insert before NewTaskView
         self.insert(task_view, len(self.tasklist.tasks) - 1)
@@ -348,13 +370,13 @@ class TaskListView(Gtk.ListBox):
 
 class KanbanListView(Gtk.Box):
 
-    def __init__(self, tasklist):
+    def __init__(self, tasklist, board):
         super(Gtk.Box, self).__init__(
             orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.title = Gtk.Label()
         self.title.set_text(tasklist.title)
         self.pack_start(self.title, False, False, 0)
-        self.tasklist = TaskListView(tasklist)
+        self.tasklist = TaskListView(tasklist, board)
         self.tasklist.set_selection_mode(Gtk.SelectionMode.SINGLE)
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -367,12 +389,20 @@ class KanbanListView(Gtk.Box):
 
 class BoardView(Gtk.Box):
 
+    __gsignals__ = {
+        "task-move-up": (GObject.SIGNAL_ACTION, None, ()),
+        "task-move-down": (GObject.SIGNAL_ACTION, None, ()),
+    }
+
     def __init__(self, board, window):
         super(Gtk.Box, self).__init__(
             orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.board = board
         self.window = window
         self.set_homogeneous(True)
+
+        self.window.bind_accelerator(self, "<Alt>Up", "task-move-up")
+        self.window.bind_accelerator(self, "<Alt>Down", "task-move-down")
 
         hb = Gtk.HeaderBar(show_close_button=True)
         hb.props.title = self.window.appname + " \u2013 " + self.board.title
@@ -388,7 +418,7 @@ class BoardView(Gtk.Box):
 
     def add_tasklist(self, tasklist):
         self.board.add(tasklist)
-        l = KanbanListView(tasklist)
+        l = KanbanListView(tasklist, self)
         self.lists.append(l)
         self.pack_start(l, True, True, 0)
 
