@@ -353,7 +353,7 @@ class TaskListView(Gtk.ListBox):
         self.set_uneditable()
 
     def add_task(self, task):
-        task_view = TaskView(task, board)
+        task_view = TaskView(task, self.board)
         self.tasklist.add(task_view.task)
         # insert before NewTaskView
         self.insert(task_view, len(self.tasklist.tasks) - 1)
