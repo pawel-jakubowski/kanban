@@ -118,6 +118,8 @@ class TaskView(Gtk.ListBoxRow):
         self.connect("key-press-event", self.on_key_press)
         board.connect("task-move-up", lambda w: self.move_up())
         board.connect("task-move-down", lambda w: self.move_down())
+        board.connect("task-move-left-top", lambda w: self.move_to_prev_list())
+        board.connect("task-move-right-top", lambda w: self.move_to_next_list())
 
     def set_layout(self, task):
         self.drag_handle = Gtk.EventBox().new()
@@ -153,24 +155,28 @@ class TaskView(Gtk.ListBoxRow):
 
     # Move
     def move_up(self):
-        if self.is_selected():
-            task_list = self.get_ancestor(TaskListView)
-            position = self.get_index()
-            if position > 0:
-                task_list.remove_task(self)
-                task_list.insert_task(self, position-1)
-                self.grab_focus()
+        if not self.is_selected():
+            return
+        task_list = self.get_ancestor(TaskListView)
+        position = self.get_index()
+        if position > 0:
+            task_list.remove_task(self)
+            task_list.insert_task(self, position-1)
+            self.grab_focus()
 
     def move_down(self):
-        if self.is_selected():
-            task_list = self.get_ancestor(TaskListView)
-            position = self.get_index()
-            if position < len(task_list.tasklist.tasks)-1:
-                task_list.remove_task(self)
-                task_list.insert_task(self, position+1)
-                self.grab_focus()
+        if not self.is_selected():
+            return
+        task_list = self.get_ancestor(TaskListView)
+        position = self.get_index()
+        if position < len(task_list.tasklist.tasks)-1:
+            task_list.remove_task(self)
+            task_list.insert_task(self, position+1)
+            self.grab_focus()
 
     def move_to_next_list(self):
+        if not self.is_selected():
+            return
         board = self.get_ancestor(BoardView)
         current_list = self.get_ancestor(TaskListView)
         current_list_index = board.get_list_index(current_list.get_title())
@@ -179,8 +185,11 @@ class TaskView(Gtk.ListBoxRow):
         next_list = board.get_list(current_list_index + 1).get_tasklist()
         current_list.remove_task(self)
         next_list.insert_task(self, 0)
+        self.grab_focus()
 
     def move_to_prev_list(self):
+        if not self.is_selected():
+            return
         board = self.get_ancestor(BoardView)
         current_list = self.get_ancestor(TaskListView)
         current_list_index = board.get_list_index(current_list.get_title())
@@ -189,6 +198,7 @@ class TaskView(Gtk.ListBoxRow):
         prev_list = board.get_list(current_list_index - 1).get_tasklist()
         current_list.remove_task(self)
         prev_list.insert_task(self, 0)
+        self.grab_focus()
 
     # Delete
 
@@ -212,12 +222,6 @@ class TaskView(Gtk.ListBoxRow):
             self.buttons["edit"].clicked()
         elif k == Gdk.KEY_Delete:
             self.buttons["delete"].clicked()
-        elif k == Gdk.KEY_greater:
-            self.move_to_next_list()
-            self.grab_focus()
-        elif k == Gdk.KEY_less:
-            self.move_to_prev_list()
-            self.grab_focus()
 
     def on_focus(self, widget, event):
         if self.entry.is_editable():
@@ -392,6 +396,8 @@ class BoardView(Gtk.Box):
     __gsignals__ = {
         "task-move-up": (GObject.SIGNAL_ACTION, None, ()),
         "task-move-down": (GObject.SIGNAL_ACTION, None, ()),
+        "task-move-left-top": (GObject.SIGNAL_ACTION, None, ()),
+        "task-move-right-top": (GObject.SIGNAL_ACTION, None, ()),
     }
 
     def __init__(self, board, window):
@@ -403,6 +409,8 @@ class BoardView(Gtk.Box):
 
         self.window.bind_accelerator(self, "<Alt>Up", "task-move-up")
         self.window.bind_accelerator(self, "<Alt>Down", "task-move-down")
+        self.window.bind_accelerator(self, "less", "task-move-left-top")
+        self.window.bind_accelerator(self, "greater", "task-move-right-top")
 
         hb = Gtk.HeaderBar(show_close_button=True)
         hb.props.title = self.window.appname + " \u2013 " + self.board.title
