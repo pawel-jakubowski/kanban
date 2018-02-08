@@ -13,7 +13,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, Gio, GLib, GObject, Pango
 
-VERSION = "0.3.1"
+VERSION = "0.4"
 
 MENU_XML = """
 <?xml version="1.0" encoding="UTF-8"?>
@@ -106,7 +106,7 @@ class KanbanWindow(Gtk.ApplicationWindow):
 
     def draw_boards_list(self):
         self.clean()
-        self.add(BoardListView(self.user_settings.boards, self))
+        self.add(BoardListView(self.user_settings, self))
         self.active_board = ""
         self.show_all()
 

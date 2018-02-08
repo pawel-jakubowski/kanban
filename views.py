@@ -469,9 +469,9 @@ class BoardListRow(Gtk.ListBoxRow):
 
 class BoardListView(Gtk.ScrolledWindow):
 
-    def __init__(self, boards, window):
+    def __init__(self, settings, window):
         super(Gtk.ScrolledWindow, self).__init__()
-        self.boards = boards
+        self.settings = settings
         self.window = window
         self.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
@@ -479,7 +479,7 @@ class BoardListView(Gtk.ScrolledWindow):
         hb.props.title = self.window.appname
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         button = Gtk.Button.new_with_label("New Board")
-        button.set_sensitive(False)
+        button.connect("clicked", lambda b: self.create_new_board())
         box.add(button)
         hb.pack_start(box)
         self.window.set_titlebar(hb)
@@ -490,8 +490,34 @@ class BoardListView(Gtk.ScrolledWindow):
         self.add(self.list)
         self.refresh()
 
+    def create_new_board(self):
+        dialog = Gtk.Dialog("Create new board", self.window, 0,
+            (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+             Gtk.STOCK_OK, Gtk.ResponseType.OK), flags=Gtk.DialogFlags.MODAL)
+        entry = Gtk.Entry()
+        box = dialog.get_content_area()
+        box.set_margin_right(10)
+        box.set_margin_left(10)
+        box.pack_start(entry, True, False, 0)
+        dialog.show_all()
+        response = dialog.run()
+        if response == Gtk.ResponseType.OK:
+            board_name = entry.get_text()
+            if board_name in self.settings.boards.keys():
+                print("There is already board", board_name)
+            else:
+                b = Board(board_name)
+                for listname in "Backlog Ready Doing Done".split():
+                    b.add(TaskList(listname))
+                self.settings.add_board(b)
+                self.refresh()
+                self.show_all()
+        dialog.destroy()
+
     def refresh(self):
-        for board in self.boards:
+        for child in self.list.get_children():
+            self.list.remove(child)
+        for board in self.settings.boards:
             self.list.add(BoardListRow(board))
 
     def on_row_activated(self, listbox, row):
