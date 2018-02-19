@@ -148,10 +148,10 @@ class TaskListView(Gtk.ListBox):
         new_task = NewTask()
         new_task.connect("modified", lambda w, text: self.add_task(Task(text)))
         self.add(new_task)
-        board.connect("task-move-up", lambda w: self.move_up())
-        board.connect("task-move-down", lambda w: self.move_down())
-        board.connect("task-move-left-top", lambda w: self.move_to_prev_list())
-        board.connect("task-move-right-top", lambda w: self.move_to_next_list())
+        board.connect("task-move-up", lambda w, listname: self.move_up())
+        board.connect("task-move-down", lambda w, listname: self.move_down())
+        board.connect("task-move-left-top", lambda w, listname: self.move_to_prev_list(listname))
+        board.connect("task-move-right-top", lambda w, listname: self.move_to_next_list(listname))
 
     def get_title(self):
         return self.tasklist.title
@@ -210,7 +210,9 @@ class TaskListView(Gtk.ListBox):
             self.select_row(task)
             task.grab_focus()
 
-    def move_to_next_list(self):
+    def move_to_next_list(self, listname):
+        if self.get_title() != listname:
+            return
         task = self.get_selected_row()
         if task is None:
             return
@@ -225,7 +227,9 @@ class TaskListView(Gtk.ListBox):
         next_list.select_row(task)
         task.grab_focus()
 
-    def move_to_prev_list(self):
+    def move_to_prev_list(self, listname):
+        if self.get_title() != listname:
+            return
         task = self.get_selected_row()
         if task is None:
             return
@@ -262,10 +266,14 @@ class KanbanListView(Gtk.Box):
 class BoardView(Gtk.Box):
 
     __gsignals__ = {
-        "task-move-up": (GObject.SIGNAL_ACTION, None, ()),
-        "task-move-down": (GObject.SIGNAL_ACTION, None, ()),
-        "task-move-left-top": (GObject.SIGNAL_ACTION, None, ()),
-        "task-move-right-top": (GObject.SIGNAL_ACTION, None, ()),
+        "signal-task-move-up": (GObject.SIGNAL_ACTION, None, ()),
+        "signal-task-move-down": (GObject.SIGNAL_ACTION, None, ()),
+        "signal-task-move-left-top": (GObject.SIGNAL_ACTION, None, ()),
+        "signal-task-move-right-top": (GObject.SIGNAL_ACTION, None, ()),
+        "task-move-up": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
+        "task-move-down": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
+        "task-move-left-top": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
+        "task-move-right-top": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
     }
 
     def __init__(self, board, window):
@@ -275,10 +283,14 @@ class BoardView(Gtk.Box):
         self.window = window
         self.set_homogeneous(True)
 
-        self.window.bind_accelerator(self, "<Alt>Up", "task-move-up")
-        self.window.bind_accelerator(self, "<Alt>Down", "task-move-down")
-        self.window.bind_accelerator(self, "less", "task-move-left-top")
-        self.window.bind_accelerator(self, "greater", "task-move-right-top")
+        self.window.bind_accelerator(self, "<Alt>Up", "signal-task-move-up")
+        self.window.bind_accelerator(self, "<Alt>Down", "signal-task-move-down")
+        self.window.bind_accelerator(self, "less", "signal-task-move-left-top")
+        self.window.bind_accelerator(self, "greater", "signal-task-move-right-top")
+        self.connect("signal-task-move-up", lambda w: self.emit("task-move-up", self.get_focus_list_name()))
+        self.connect("signal-task-move-down", lambda w: self.emit("task-move-down", self.get_focus_list_name()))
+        self.connect("signal-task-move-left-top", lambda w: self.emit("task-move-left-top", self.get_focus_list_name()))
+        self.connect("signal-task-move-right-top", lambda w: self.emit("task-move-right-top", self.get_focus_list_name()))
 
         hb = Gtk.HeaderBar(show_close_button=True)
         hb.props.title = self.window.appname + " \u2013 " + self.board.title
@@ -291,6 +303,9 @@ class BoardView(Gtk.Box):
         hb.pack_start(box)
 
         self.refresh()
+
+    def get_focus_list_name(self):
+        return self.get_focus_child().get_tasklist().get_title()
 
     def add_tasklist(self, tasklist):
         self.board.add(tasklist)
