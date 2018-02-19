@@ -25,10 +25,6 @@ class TaskView(Gtk.ListBoxRow):
         self.set_drag_and_drop()
         self.connect("focus-in-event", self.on_focus)
         self.connect("key-press-event", self.on_key_press)
-        board.connect("task-move-up", lambda w: self.move_up())
-        board.connect("task-move-down", lambda w: self.move_down())
-        board.connect("task-move-left-top", lambda w: self.move_to_prev_list())
-        board.connect("task-move-right-top", lambda w: self.move_to_next_list())
 
     def set_layout(self, task):
         self.drag_handle = Gtk.EventBox().new()
@@ -61,53 +57,6 @@ class TaskView(Gtk.ListBoxRow):
     def on_editable_changed(self, widget, is_editable):
         if not is_editable:
             self.grab_focus()
-
-    # Move
-    def move_up(self):
-        if not self.is_selected():
-            return
-        task_list = self.get_ancestor(TaskListView)
-        position = self.get_index()
-        if position > 0:
-            task_list.remove_task(self)
-            task_list.insert_task(self, position-1)
-            self.grab_focus()
-
-    def move_down(self):
-        if not self.is_selected():
-            return
-        task_list = self.get_ancestor(TaskListView)
-        position = self.get_index()
-        if position < len(task_list.tasklist.tasks)-1:
-            task_list.remove_task(self)
-            task_list.insert_task(self, position+1)
-            self.grab_focus()
-
-    def move_to_next_list(self):
-        if not self.is_selected():
-            return
-        board = self.get_ancestor(BoardView)
-        current_list = self.get_ancestor(TaskListView)
-        current_list_index = board.get_list_index(current_list.get_title())
-        if current_list_index >= len(board.lists):
-            return
-        next_list = board.get_list(current_list_index + 1).get_tasklist()
-        current_list.remove_task(self)
-        next_list.insert_task(self, 0)
-        self.grab_focus()
-
-    def move_to_prev_list(self):
-        if not self.is_selected():
-            return
-        board = self.get_ancestor(BoardView)
-        current_list = self.get_ancestor(TaskListView)
-        current_list_index = board.get_list_index(current_list.get_title())
-        if current_list_index == 0:
-            return
-        prev_list = board.get_list(current_list_index - 1).get_tasklist()
-        current_list.remove_task(self)
-        prev_list.insert_task(self, 0)
-        self.grab_focus()
 
     # Delete
 
@@ -199,6 +148,10 @@ class TaskListView(Gtk.ListBox):
         new_task = NewTask()
         new_task.connect("modified", lambda w, text: self.add_task(Task(text)))
         self.add(new_task)
+        board.connect("task-move-up", lambda w: self.move_up())
+        board.connect("task-move-down", lambda w: self.move_down())
+        board.connect("task-move-left-top", lambda w: self.move_to_prev_list())
+        board.connect("task-move-right-top", lambda w: self.move_to_next_list())
 
     def get_title(self):
         return self.tasklist.title
@@ -233,6 +186,59 @@ class TaskListView(Gtk.ListBox):
         self.tasklist.remove(task_view.get_index())
         self.remove(task_view)
 
+    def move_up(self):
+        task = self.get_selected_row()
+        if task is None:
+            return
+        position = task.get_index()
+        if position > 0:
+            self.unselect_row(task)
+            self.remove_task(task)
+            self.insert_task(task, position-1)
+            self.select_row(task)
+            task.grab_focus()
+
+    def move_down(self):
+        task = self.get_selected_row()
+        if task is None:
+            return
+        position = task.get_index()
+        if position < len(self.tasklist.tasks)-1:
+            self.unselect_row(task)
+            self.remove_task(task)
+            self.insert_task(task, position+1)
+            self.select_row(task)
+            task.grab_focus()
+
+    def move_to_next_list(self):
+        task = self.get_selected_row()
+        if task is None:
+            return
+        board = self.get_ancestor(BoardView)
+        current_list_index = board.get_list_index(self.get_title())
+        if current_list_index + 1 >= len(board.lists):
+            return
+        next_list = board.get_list(current_list_index + 1).get_tasklist()
+        self.unselect_row(task)
+        self.remove_task(task)
+        next_list.insert_task(task, 0)
+        next_list.select_row(task)
+        task.grab_focus()
+
+    def move_to_prev_list(self):
+        task = self.get_selected_row()
+        if task is None:
+            return
+        board = self.get_ancestor(BoardView)
+        current_list_index = board.get_list_index(self.get_title())
+        if current_list_index == 0:
+            return
+        prev_list = board.get_list(current_list_index - 1).get_tasklist()
+        self.unselect_row(task)
+        self.remove_task(task)
+        prev_list.insert_task(task, 0)
+        prev_list.select_row(task)
+        task.grab_focus()
 
 class KanbanListView(Gtk.Box):
 
