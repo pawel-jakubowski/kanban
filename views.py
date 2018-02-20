@@ -285,8 +285,8 @@ class BoardView(Gtk.Box):
 
         self.window.bind_accelerator(self, "<Alt>Up", "signal-task-move-up")
         self.window.bind_accelerator(self, "<Alt>Down", "signal-task-move-down")
-        self.window.bind_accelerator(self, "less", "signal-task-move-left-top")
-        self.window.bind_accelerator(self, "greater", "signal-task-move-right-top")
+        self.window.bind_accelerator(self, "<Alt>Left", "signal-task-move-left-top")
+        self.window.bind_accelerator(self, "<Alt>Right", "signal-task-move-right-top")
         self.connect("signal-task-move-up", lambda w: self.emit("task-move-up", self.get_focus_list_name()))
         self.connect("signal-task-move-down", lambda w: self.emit("task-move-down", self.get_focus_list_name()))
         self.connect("signal-task-move-left-top", lambda w: self.emit("task-move-left-top", self.get_focus_list_name()))
