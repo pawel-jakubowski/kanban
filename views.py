@@ -137,6 +137,10 @@ class TaskView(Gtk.ListBoxRow):
 
 class TaskListView(Gtk.ListBox):
 
+    __gsignals__ = {
+        "modified": (GObject.SIGNAL_RUN_FIRST, None, ())
+    }
+
     def __init__(self, tasklist, board):
         super(Gtk.ListBox, self).__init__()
         self.tasklist = tasklist
@@ -144,6 +148,7 @@ class TaskListView(Gtk.ListBox):
         self.board = board
         for t in tasklist.tasks:
             task_view = TaskView(t, board)
+            task_view.entry.connect("save", self.on_task_modified)
             self.add(task_view)
         new_task = NewTask()
         new_task.connect("modified", lambda w, text: self.add_task(Task(text)))
@@ -173,18 +178,20 @@ class TaskListView(Gtk.ListBox):
 
     def add_task(self, task):
         task_view = TaskView(task, self.board)
-        self.tasklist.add(task_view.task)
+        task_view.entry.connect("save", self.on_task_modified)
         # insert before NewTask
-        self.insert(task_view, len(self.tasklist.tasks) - 1)
+        self.insert_task(task_view, len(self.tasklist.tasks))
         task_view.show_all()
 
     def insert_task(self, task_view, index):
         self.insert(task_view, index)
         self.tasklist.insert(index, task_view.task)
+        self.emit("modified")
 
     def remove_task(self, task_view):
         self.tasklist.remove(task_view.get_index())
         self.remove(task_view)
+        self.emit("modified")
 
     def move_up(self):
         task = self.get_selected_row()
@@ -243,6 +250,9 @@ class TaskListView(Gtk.ListBox):
         prev_list.insert_task(task, 0)
         prev_list.select_row(task)
         task.grab_focus()
+
+    def on_task_modified(self, widget, title):
+        self.emit("modified")
 
 class KanbanListView(Gtk.Box):
 
@@ -310,6 +320,7 @@ class BoardView(Gtk.Box):
     def add_tasklist(self, tasklist):
         self.board.add(tasklist)
         l = KanbanListView(tasklist, self)
+        l.get_tasklist().connect("modified", lambda w: self.window.user_settings.save())
         self.lists.append(l)
         self.pack_start(l, True, True, 0)
 
