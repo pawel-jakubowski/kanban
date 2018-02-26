@@ -13,7 +13,8 @@ from gi.repository import Gtk, Gdk, Gio, GLib, GObject, Pango
 class TaskView(Gtk.ListBoxRow):
 
     __gsignals__ = {
-        "modified": (GObject.SIGNAL_RUN_FIRST, None, (str,))
+        "modified": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
+        "delete": (GObject.SIGNAL_RUN_FIRST, None, ())
     }
 
     def __init__(self, task, board):
@@ -40,7 +41,7 @@ class TaskView(Gtk.ListBoxRow):
         self.buttons["edit"].set_can_focus(False)
         self.buttons["delete"] = Gtk.Button.new_from_icon_name(
             "user-trash-full-symbolic", 1)
-        self.buttons["delete"].connect("clicked", self.on_delete_clicked)
+        self.buttons["delete"].connect("clicked", lambda w: self.emit("delete"))
         self.buttons["delete"].set_can_focus(False)
         buttonsbox = Gtk.Box(spacing=1)
         for name, button in self.buttons.items():
@@ -57,18 +58,6 @@ class TaskView(Gtk.ListBoxRow):
     def on_editable_changed(self, widget, is_editable):
         if not is_editable:
             self.grab_focus()
-
-    # Delete
-
-    def on_delete_clicked(self, button):
-        listview = self.get_ancestor(TaskListView)
-        index = self.get_index()
-        if index > 0:
-            index -= 1
-        listview.remove_task(self)
-        row = listview.get_row_at_index(index)
-        listview.select_row(row)
-        row.grab_focus()
 
     # Edit
 
@@ -148,6 +137,7 @@ class TaskListView(Gtk.ListBox):
         self.board = board
         for t in tasklist.tasks:
             task_view = TaskView(t, board)
+            task_view.connect("delete", self.on_task_delete)
             task_view.entry.connect("save", self.on_task_modified)
             self.add(task_view)
         new_task = NewTask()
@@ -178,6 +168,7 @@ class TaskListView(Gtk.ListBox):
 
     def add_task(self, task):
         task_view = TaskView(task, self.board)
+        task_view.connect("delete", self.on_task_delete)
         task_view.entry.connect("save", self.on_task_modified)
         # insert before NewTask
         self.insert_task(task_view, len(self.tasklist.tasks))
@@ -253,6 +244,16 @@ class TaskListView(Gtk.ListBox):
 
     def on_task_modified(self, widget, title):
         self.emit("modified")
+
+    def on_task_delete(self, widget):
+        index = widget.get_index()
+        if index > 0:
+            index -= 1
+        self.remove_task(widget)
+        row = self.get_row_at_index(index)
+        self.select_row(row)
+        row.grab_focus()
+
 
 class KanbanListView(Gtk.Box):
 
