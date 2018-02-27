@@ -13,7 +13,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, Gio, GLib, GObject, Pango
 
-VERSION = "0.4.3"
+VERSION = "0.4.4"
 
 MENU_XML = """
 <?xml version="1.0" encoding="UTF-8"?>
@@ -98,7 +98,7 @@ class KanbanWindow(Gtk.ApplicationWindow):
         self.add_accel_group(self.accelerators)
 
         self.settings = Gio.Settings.new("com.pjakubow.kanban")
-        self.connect("configure-event", self.save_gsettings)
+        self.connect("configure-event", lambda w,e: self.save_window_info())
         self.user_settings = user_settings
 
         self.active_board = ""
@@ -138,12 +138,14 @@ class KanbanWindow(Gtk.ApplicationWindow):
         else:
             self.draw_boards_list()
 
-    def save_gsettings(self, window, event):
+    def save_window_info(self):
         self.settings.set_boolean("window-maximized", self.is_maximized())
         w, h = self.get_size()
         self.settings.set_value("window-size", GLib.Variant("ai", [w, h]))
         x, y = self.get_position()
         self.settings.set_value("window-position", GLib.Variant("ai", [x, y]))
+
+    def save_board_info(self):
         self.settings.set_string("selected-board", self.active_board)
 
     def clean(self):
@@ -238,7 +240,7 @@ class KanbanApplication(Gtk.Application):
 
     def on_quit(self, param):
         if self.window is not None:
-            self.window.save_gsettings(self.window, None)
+            self.window.save_board_info()
             self.window.user_settings.save()
 
 if __name__ == "__main__":
