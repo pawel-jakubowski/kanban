@@ -22,19 +22,24 @@ class TaskView(Gtk.ListBoxRow):
         self.task = task
         self.connect("modified", lambda widget,
                      title: self.task.set_title(title))
-        self.set_layout(self.task)
-        self.set_drag_and_drop()
+        self.buttons = dict()
+        self.refresh_layout(self.task)
         self.connect("focus-in-event", self.on_focus)
         self.connect("key-press-event", self.on_key_press)
 
-    def set_layout(self, task):
+    def refresh_layout(self, task):
+        # Cleanup first
+        for child in self.get_children():
+            self.remove(child)
+        # drag handle
         self.drag_handle = Gtk.EventBox().new()
         self.drag_handle.add(
             Gtk.Image().new_from_icon_name("open-menu-symbolic", 1))
+        # entry
         self.entry = ActivableTextEntry(task.title)
         self.entry.connect("changed", self.on_modified)
         self.entry.connect("editable-state-changed", self.on_editable_changed)
-        self.buttons = dict()
+        # buttons
         self.buttons["edit"] = Gtk.Button.new_from_icon_name(
             "document-edit-symbolic", 1)
         self.buttons["edit"].connect("clicked", self.on_edit_clicked)
@@ -46,6 +51,7 @@ class TaskView(Gtk.ListBoxRow):
         buttonsbox = Gtk.Box(spacing=1)
         for name, button in self.buttons.items():
             buttonsbox.pack_start(button, False, False, 0)
+        # Add all elements
         self.box = Gtk.Box(spacing=2)
         self.box.pack_start(self.drag_handle, False, False, 5)
         self.box.pack_start(self.entry, True, True, 0)
@@ -60,7 +66,6 @@ class TaskView(Gtk.ListBoxRow):
             self.grab_focus()
 
     # Edit
-
     def on_key_press(self, widget, event):
         if widget is not self:
             return
@@ -80,50 +85,6 @@ class TaskView(Gtk.ListBoxRow):
         else:
             self.entry.editable()
 
-    # Drag and Drop
-
-    def set_drag_and_drop(self):
-        self.target_entry = Gtk.TargetEntry.new(
-            "GTK_LIST_BOX_ROW", Gtk.TargetFlags.SAME_APP, 0)
-        self.drag_handle.drag_source_set(Gdk.ModifierType.BUTTON1_MASK, [
-                                         self.target_entry], Gdk.DragAction.MOVE)
-        self.drag_handle.connect("drag-begin", self.on_drag_begin)
-        self.drag_handle.connect("drag-data-get", self.on_drag_data_get)
-        self.drag_dest_set(Gtk.DestDefaults.ALL, [
-                           self.target_entry], Gdk.DragAction.MOVE)
-        self.connect("drag-data-received", self.on_drag_data_received)
-
-    def on_drag_begin(self, widget, drag_context):
-        row = widget.get_ancestor(TaskView)
-        listbox = row.get_parent()
-        listbox.select_row(row)
-        surface = cairo.ImageSurface(
-            cairo.Format.ARGB32, row.get_allocated_width(), row.get_allocated_height())
-        context = cairo.Context(surface)
-        row.draw(context)
-        Gtk.drag_set_icon_surface(drag_context, surface)
-
-    def on_drag_data_received(self, widget, drag_context, x, y, data, info, time):
-        board = widget.get_ancestor(BoardView)
-        source_info = pickle.loads(data.get_data())
-        source_list_index = board.get_list_index(source_info["list"])
-        source_list = board.get_list(source_list_index).get_tasklist()
-        target = self
-        target_list = target.get_ancestor(TaskListView)
-        if source_info["index"] == target.get_index() and source_info["list"] == target_list.get_title():
-            return
-        source = source_list.get_row_at_index(source_info["index"])
-        position = target.get_index()
-        source_list.remove_task(source)
-        target_list.insert_task(source, position)
-
-    def on_drag_data_get(self, widget, drag_context, data, info, time):
-        info = dict()
-        info["list"] = widget.get_ancestor(TaskListView).get_title()
-        info["index"] = widget.get_ancestor(TaskView).get_index()
-        data.set(Gdk.Atom.intern_static_string(
-            "GTK_LIST_BOX_ROW"), 32, pickle.dumps(info))
-
 class TaskListView(Gtk.ListBox):
 
     __gsignals__ = {
@@ -137,6 +98,7 @@ class TaskListView(Gtk.ListBox):
         self.board = board
         for t in tasklist.tasks:
             task_view = TaskView(t, board)
+            self.set_drag_and_drop(task_view)
             task_view.connect("delete", self.on_task_delete)
             task_view.entry.connect("save", self.on_task_modified)
             self.add(task_view)
@@ -168,6 +130,7 @@ class TaskListView(Gtk.ListBox):
 
     def add_task(self, task):
         task_view = TaskView(task, self.board)
+        self.set_drag_and_drop(task_view)
         task_view.connect("delete", self.on_task_delete)
         task_view.entry.connect("save", self.on_task_modified)
         # insert before NewTask
@@ -253,6 +216,49 @@ class TaskListView(Gtk.ListBox):
         row = self.get_row_at_index(index)
         self.select_row(row)
         row.grab_focus()
+
+    # Drag and Drop
+    def set_drag_and_drop(self, task_view):
+        task_view.target_entry = Gtk.TargetEntry.new(
+            "GTK_LIST_BOX_ROW", Gtk.TargetFlags.SAME_APP, 0)
+        task_view.drag_handle.drag_source_set(Gdk.ModifierType.BUTTON1_MASK, [
+                                         task_view.target_entry], Gdk.DragAction.MOVE)
+        task_view.drag_handle.connect("drag-begin", self.on_drag_begin)
+        task_view.drag_handle.connect("drag-data-get", self.on_drag_data_get)
+        task_view.drag_dest_set(Gtk.DestDefaults.ALL, [
+                           task_view.target_entry], Gdk.DragAction.MOVE)
+        task_view.connect("drag-data-received", self.on_drag_data_received)
+
+    def on_drag_begin(self, widget, drag_context):
+        row = widget.get_ancestor(TaskView)
+        listbox = row.get_parent()
+        listbox.select_row(row)
+        surface = cairo.ImageSurface(
+            cairo.Format.ARGB32, row.get_allocated_width(), row.get_allocated_height())
+        context = cairo.Context(surface)
+        row.draw(context)
+        Gtk.drag_set_icon_surface(drag_context, surface)
+
+    def on_drag_data_received(self, widget, drag_context, x, y, data, info, time):
+        board = widget.get_ancestor(BoardView)
+        source_info = pickle.loads(data.get_data())
+        source_list_index = board.get_list_index(source_info["list"])
+        source_list = board.get_list(source_list_index).get_tasklist()
+        target = widget
+        target_list = target.get_ancestor(TaskListView)
+        if source_info["index"] == target.get_index() and source_info["list"] == target_list.get_title():
+            return
+        source = source_list.get_row_at_index(source_info["index"])
+        position = target.get_index()
+        source_list.remove_task(source)
+        target_list.insert_task(source, position)
+
+    def on_drag_data_get(self, widget, drag_context, data, info, time):
+        info = dict()
+        info["list"] = widget.get_ancestor(TaskListView).get_title()
+        info["index"] = widget.get_ancestor(TaskView).get_index()
+        data.set(Gdk.Atom.intern_static_string(
+            "GTK_LIST_BOX_ROW"), 32, pickle.dumps(info))
 
 
 class KanbanListView(Gtk.Box):
