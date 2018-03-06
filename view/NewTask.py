@@ -29,7 +29,7 @@ class NewTask(Gtk.ListBoxRow):
 
     def toggle_title(self):
         if self.entry.is_editable():
-            self.entry.uneditable(self)
+            self.entry.uneditable()
         else:
             self.entry.editable()
 
