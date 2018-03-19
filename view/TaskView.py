@@ -3,8 +3,29 @@ from .TextEntry import TextEntry,ActivableTextEntry
 
 import gi
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk, GObject
+from gi.repository import Gtk, Gdk, GObject, Pango
 
+
+class TaskEditDialog(Gtk.Dialog):
+
+    def __init__(self, window, task):
+        Gtk.Dialog.__init__(self, "Task edit", window, 0,
+            (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+             Gtk.STOCK_SAVE, Gtk.ResponseType.APPLY))
+
+        self.task = task
+
+        self.entry = TextEntry(self.task.title)
+        self.entry.connect("modified-cancel", lambda w: self.emit("response", Gtk.ResponseType.CANCEL))
+        self.entry.connect("modified-save", self.on_save)
+
+        box = self.get_content_area()
+        box.add(self.entry)
+        self.show_all()
+
+    def on_save(self, widget):
+        self.task.title = self.entry.get_text()
+        self.emit("response", Gtk.ResponseType.APPLY)
 
 class TaskView(Gtk.ListBoxRow):
 
@@ -20,7 +41,6 @@ class TaskView(Gtk.ListBoxRow):
                      title: self.task.set_title(title))
         self.buttons = dict()
         self.refresh_layout(self.task)
-        self.connect("focus-in-event", self.on_focus)
         self.connect("key-press-event", self.on_key_press)
 
     def refresh_layout(self, task):
@@ -32,9 +52,10 @@ class TaskView(Gtk.ListBoxRow):
         self.drag_handle.add(
             Gtk.Image().new_from_icon_name("open-menu-symbolic", 1))
         # entry
-        self.entry = ActivableTextEntry(task.title)
-        self.entry.connect("changed", self.on_modified)
-        self.entry.connect("editable-state-changed", self.on_editable_changed)
+        self.label = Gtk.Label(task.title)
+        self.label.set_line_wrap(True)
+        self.label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        self.label.set_xalign(0)
         # buttons
         self.buttons["edit"] = Gtk.Button.new_from_icon_name(
             "document-edit-symbolic", 1)
@@ -50,16 +71,12 @@ class TaskView(Gtk.ListBoxRow):
         # Add all elements
         self.box = Gtk.Box(spacing=2)
         self.box.pack_start(self.drag_handle, False, False, 5)
-        self.box.pack_start(self.entry, True, True, 0)
+        self.box.pack_start(self.label, True, True, 0)
         self.box.pack_end(buttonsbox, False, False, 0)
         self.add(self.box)
 
     def on_modified(self, widget, title):
         self.emit("modified", title)
-
-    def on_editable_changed(self, widget, is_editable):
-        if not is_editable:
-            self.grab_focus()
 
     # Edit
     def on_key_press(self, widget, event):
@@ -71,14 +88,25 @@ class TaskView(Gtk.ListBoxRow):
         elif k == Gdk.KEY_Delete:
             self.buttons["delete"].clicked()
 
-    def on_focus(self, widget, event):
-        if self.entry.is_editable():
-            self.entry.entry.grab_focus()  # TODO: entry.grab_focus() should be enough
-
     def on_edit_clicked(self, button):
-        if self.entry.is_editable():
-            self.entry.uneditable()
-        else:
-            self.entry.editable()
+        dialog = TaskEditDialog(self.get_ancestor(Gtk.Window), self.task)
+        response = dialog.run()
+
+        if response == Gtk.ResponseType.APPLY:
+            self.emit("modified", self.task.title)
+            print("The Save button was clicked")
+        elif response == Gtk.ResponseType.CANCEL:
+            print("The Cancel button was clicked")
+
+        print(self.task)
+
+        dialog.destroy()
+
+        self.label.set_text(self.task.title)
+
+        #if self.entry.is_editable():
+        #    self.entry.uneditable()
+        #else:
+        #    self.entry.editable()
 
 

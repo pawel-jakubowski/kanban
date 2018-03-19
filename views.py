@@ -26,7 +26,7 @@ class TaskListView(Gtk.ListBox):
             task_view = TaskView(t, board)
             self.set_drag_and_drop(task_view)
             task_view.connect("delete", self.on_task_delete)
-            task_view.entry.connect("save", self.on_task_modified)
+            task_view.connect("modified", self.on_task_modified)
             self.add(task_view)
         new_task = NewTask()
         new_task.connect("modified", lambda w, text: self.add_task(Task(text)))
@@ -39,11 +39,6 @@ class TaskListView(Gtk.ListBox):
     def get_title(self):
         return self.tasklist.title
 
-    def set_uneditable(self):
-        for task_view in self.get_children():
-            if not task_view.is_selected() and task_view.entry.is_editable():
-                task_view.entry.uneditable()
-
     def on_row_selected(self, task_list, task_view):
         if task_view is None:
             return
@@ -51,14 +46,12 @@ class TaskListView(Gtk.ListBox):
         for l in board.lists:
             if l.get_tasklist() is not task_list:
                 l.get_tasklist().unselect_all()
-                l.get_tasklist().set_uneditable()
-        self.set_uneditable()
 
     def add_task(self, task):
         task_view = TaskView(task, self.board)
         self.set_drag_and_drop(task_view)
         task_view.connect("delete", self.on_task_delete)
-        task_view.entry.connect("save", self.on_task_modified)
+        task_view.connect("modified", self.on_task_modified)
         # insert before NewTask
         self.insert_task(task_view, len(self.tasklist.tasks))
         task_view.show_all()
