@@ -1,9 +1,10 @@
 from model.Task import Task
 from .TextEntry import TextEntry,ActivableTextEntry
+from .TextEntry import TextEntry,ActivableTextEntry
 
 import gi
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk, GObject, Pango
+from gi.repository import Gtk, Gdk, GObject, Pango, GLib
 
 
 class TaskEditDialog(Gtk.Dialog):
@@ -15,13 +16,74 @@ class TaskEditDialog(Gtk.Dialog):
 
         self.task = task
 
+        entrylabel = Gtk.Label("Title", xalign=0)
         self.entry = TextEntry(self.task.title)
         self.entry.connect("modified-cancel", lambda w: self.emit("response", Gtk.ResponseType.CANCEL))
         self.entry.connect("modified-save", self.on_save)
 
+        calendarlabel = Gtk.Label("Due Date", xalign=0)
+        calendarbutton = Gtk.MenuButton()
+        calendarbox = Gtk.Box()
+        self.calendartext = Gtk.Label("No date set")
+        calendarimg = Gtk.Image.new_from_icon_name("pan-down-symbolic", 1)
+        calendarbox.pack_start(self.calendartext, True, True, 0)
+        calendarbox.pack_end(calendarimg, False, False, 0)
+        calendarbutton.add(calendarbox)
+        todaybutton = Gtk.Button("Today")
+        todaybutton.connect("clicked", lambda w: self.set_today())
+        tomorrowbutton = Gtk.Button("Tomorrow")
+        tomorrowbutton.connect("clicked", lambda w: self.set_tomorrow())
+        buttonsbox = Gtk.Box()
+        buttonsbox.pack_start(todaybutton, True, True, 0)
+        buttonsbox.pack_start(tomorrowbutton, True, True, 0)
+        buttonsbox.pack_start(calendarbutton, True, True, 0)
+
+        datepopover = Gtk.Popover()
+        calendar = Gtk.Calendar()
+        calendar.connect("day-selected", self.on_date_selected)
+        nodatebutton = Gtk.Button("None")
+        nodatebutton.connect("clicked", self.on_date_cleared)
+        datebox = Gtk.Box.new(Gtk.Orientation.VERTICAL, 12)
+        datebox.pack_start(calendar, True, True, 0)
+        datebox.pack_end(nodatebutton, False, False, 0)
+        datepopover.add(datebox)
+        datepopover.show_all()
+        datepopover.hide()
+        calendarbutton.set_popover(datepopover)
+
+        if hasattr(self.task, "due_date") and self.task.due_date is not None:
+            d = self.task.due_date
+            self.set_calendar_date(d.year, d.month, d.day)
+            calendar.select_month(d.month, d.year)
+            calendar.select_day(d.day)
+
         box = self.get_content_area()
+        box.add(entrylabel)
         box.add(self.entry)
+        box.add(calendarlabel)
+        box.add(buttonsbox)
         self.show_all()
+
+    def set_today(self):
+        date = GLib.DateTime.new_now_local()
+        self.set_calendar_date(date.get_year(), date.get_month(), date.get_day_of_month())
+
+    def set_tomorrow(self):
+        date = GLib.DateTime.new_now_local()
+        date = date.add_days(1)
+        self.set_calendar_date(date.get_year(), date.get_month(), date.get_day_of_month())
+
+    def set_calendar_date(self, year, month, day):
+        date = GLib.DateTime.new_local(year, month, day, 0, 0, 0)
+        self.calendartext.set_text(date.format("%x"))
+        self.task.set_due_date(year, month, day)
+
+    def on_date_selected(self, calendar):
+        year, month, day = calendar.get_date()
+        self.set_calendar_date(year, month, day)
+
+    def on_date_cleared(self, button):
+        self.calendartext.set_text("No date set")
 
     def on_save(self, widget):
         self.task.title = self.entry.get_text()
@@ -91,22 +153,8 @@ class TaskView(Gtk.ListBoxRow):
     def on_edit_clicked(self, button):
         dialog = TaskEditDialog(self.get_ancestor(Gtk.Window), self.task)
         response = dialog.run()
-
         if response == Gtk.ResponseType.APPLY:
             self.emit("modified", self.task.title)
-            print("The Save button was clicked")
-        elif response == Gtk.ResponseType.CANCEL:
-            print("The Cancel button was clicked")
-
-        print(self.task)
-
+            self.label.set_text(self.task.title)
         dialog.destroy()
-
-        self.label.set_text(self.task.title)
-
-        #if self.entry.is_editable():
-        #    self.entry.uneditable()
-        #else:
-        #    self.entry.editable()
-
 
