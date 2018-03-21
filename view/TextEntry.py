@@ -11,6 +11,7 @@ class TextEntry(Gtk.TextView):
 
     def __init__(self, data=""):
         super(Gtk.TextView, self).__init__()
+        self.set_accepts_tab(False)
         self.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
         self.set_justification(Gtk.Justification.LEFT)
         self.set_text(data)
