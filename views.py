@@ -206,10 +206,11 @@ class BoardView(Gtk.Box):
         "signal-task-move-down": (GObject.SIGNAL_ACTION, None, ()),
         "signal-task-move-left-top": (GObject.SIGNAL_ACTION, None, ()),
         "signal-task-move-right-top": (GObject.SIGNAL_ACTION, None, ()),
+        "signal-exit": (GObject.SIGNAL_ACTION, None, ()),
         "task-move-up": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
         "task-move-down": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
         "task-move-left-top": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
-        "task-move-right-top": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
+        "task-move-right-top": (GObject.SIGNAL_RUN_FIRST, None, (str,))
     }
 
     def __init__(self, board, window):
@@ -223,10 +224,12 @@ class BoardView(Gtk.Box):
         self.window.bind_accelerator(self, "<Alt>Down", "signal-task-move-down")
         self.window.bind_accelerator(self, "<Alt>Left", "signal-task-move-left-top")
         self.window.bind_accelerator(self, "<Alt>Right", "signal-task-move-right-top")
+        self.window.bind_accelerator(self, "Escape", "signal-exit")
         self.connect("signal-task-move-up", lambda w: self.emit("task-move-up", self.get_focus_list_name()))
         self.connect("signal-task-move-down", lambda w: self.emit("task-move-down", self.get_focus_list_name()))
         self.connect("signal-task-move-left-top", lambda w: self.emit("task-move-left-top", self.get_focus_list_name()))
         self.connect("signal-task-move-right-top", lambda w: self.emit("task-move-right-top", self.get_focus_list_name()))
+        self.connect("signal-exit", self.on_back_clicked)
 
         hb = Gtk.HeaderBar(show_close_button=True)
         hb.props.title = self.window.appname + " \u2013 " + self.board.title
@@ -274,6 +277,11 @@ class BoardView(Gtk.Box):
         self.clear()
         for title, l in self.board.tasklists.items():
             self.add_tasklist(l)
+        if len(self.board.tasklists) > 0:
+            first_list = self.get_children()[0].get_tasklist()
+            first_elem = first_list.get_row_at_index(0)
+            first_list.select_row(first_elem)
+            first_elem.grab_focus()
 
 
 class BoardListRow(Gtk.ListBoxRow):
@@ -339,6 +347,10 @@ class BoardListView(Gtk.ScrolledWindow):
             self.list.remove(child)
         for board in self.settings.boards:
             self.list.add(BoardListRow(board))
+        if len(self.list.get_children()) > 0:
+            first_elem = self.list.get_children()[0]
+            self.list.select_row(first_elem)
+            first_elem.grab_focus()
 
     def on_row_activated(self, listbox, row):
         self.window.draw_board(row.get_title())
