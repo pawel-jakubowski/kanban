@@ -33,6 +33,8 @@ class TaskListView(Gtk.ListBox):
         self.add(new_task)
         board.connect("task-move-up", lambda w, listname: self.move_up())
         board.connect("task-move-down", lambda w, listname: self.move_down())
+        board.connect("task-move-top", lambda w, listname: self.move_top())
+        board.connect("task-move-bottom", lambda w, listname: self.move_bottom())
         board.connect("task-move-left-top", lambda w, listname: self.move_to_prev_list(listname))
         board.connect("task-move-right-top", lambda w, listname: self.move_to_next_list(listname))
 
@@ -87,6 +89,31 @@ class TaskListView(Gtk.ListBox):
             self.unselect_row(task)
             self.remove_task(task)
             self.insert_task(task, position+1)
+            self.select_row(task)
+            task.grab_focus()
+
+    def move_top(self):
+        task = self.get_selected_row()
+        if task is None:
+            return
+        position = task.get_index()
+        if position > 0:
+            self.unselect_row(task)
+            self.remove_task(task)
+            self.insert_task(task, 0)
+            self.select_row(task)
+            task.grab_focus()
+
+    def move_bottom(self):
+        task = self.get_selected_row()
+        if task is None:
+            return
+        position = task.get_index()
+        lastelem = len(self.tasklist.tasks)-1
+        if position < lastelem:
+            self.unselect_row(task)
+            self.remove_task(task)
+            self.insert_task(task, lastelem)
             self.select_row(task)
             task.grab_focus()
 
@@ -204,11 +231,15 @@ class BoardView(Gtk.Box):
     __gsignals__ = {
         "signal-task-move-up": (GObject.SIGNAL_ACTION, None, ()),
         "signal-task-move-down": (GObject.SIGNAL_ACTION, None, ()),
+        "signal-task-move-top": (GObject.SIGNAL_ACTION, None, ()),
+        "signal-task-move-bottom": (GObject.SIGNAL_ACTION, None, ()),
         "signal-task-move-left-top": (GObject.SIGNAL_ACTION, None, ()),
         "signal-task-move-right-top": (GObject.SIGNAL_ACTION, None, ()),
         "signal-exit": (GObject.SIGNAL_ACTION, None, ()),
         "task-move-up": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
         "task-move-down": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
+        "task-move-top": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
+        "task-move-bottom": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
         "task-move-left-top": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
         "task-move-right-top": (GObject.SIGNAL_RUN_FIRST, None, (str,))
     }
@@ -222,11 +253,15 @@ class BoardView(Gtk.Box):
 
         self.window.bind_accelerator(self, "<Alt>Up", "signal-task-move-up")
         self.window.bind_accelerator(self, "<Alt>Down", "signal-task-move-down")
+        self.window.bind_accelerator(self, "<Alt><Shift>Up", "signal-task-move-top")
+        self.window.bind_accelerator(self, "<Alt><Shift>Down", "signal-task-move-bottom")
         self.window.bind_accelerator(self, "<Alt>Left", "signal-task-move-left-top")
         self.window.bind_accelerator(self, "<Alt>Right", "signal-task-move-right-top")
         self.window.bind_accelerator(self, "Escape", "signal-exit")
         self.connect("signal-task-move-up", lambda w: self.emit("task-move-up", self.get_focus_list_name()))
         self.connect("signal-task-move-down", lambda w: self.emit("task-move-down", self.get_focus_list_name()))
+        self.connect("signal-task-move-top", lambda w: self.emit("task-move-top", self.get_focus_list_name()))
+        self.connect("signal-task-move-bottom", lambda w: self.emit("task-move-bottom", self.get_focus_list_name()))
         self.connect("signal-task-move-left-top", lambda w: self.emit("task-move-left-top", self.get_focus_list_name()))
         self.connect("signal-task-move-right-top", lambda w: self.emit("task-move-right-top", self.get_focus_list_name()))
         self.connect("signal-exit", self.on_back_clicked)
