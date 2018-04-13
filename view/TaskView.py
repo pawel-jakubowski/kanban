@@ -123,6 +123,21 @@ class TaskView(Gtk.ListBoxRow):
         if hasattr(task, "due_date") and task.due_date is not None:
             date = GLib.DateTime.new_local(task.due_date.year, task.due_date.month, task.due_date.day, 0, 0, 0)
             self.due_date = Gtk.Label(date.format("%x"))
+            todaytime = GLib.DateTime.new_now_local()
+            timediff = date.difference(todaytime) / (24 * 60 * 60 * 1000000)
+            if timediff < 1:
+                c = Gdk.RGBA()
+                c.parse("lightpink")
+                self.override_background_color(Gtk.StateType.NORMAL, c)
+            elif timediff < 2:
+                c = Gdk.RGBA()
+                c.parse("lightsalmon")
+                self.override_background_color(Gtk.StateType.NORMAL, c)
+            elif timediff < 3:
+                c = Gdk.RGBA()
+                c.parse("yellow")
+                self.override_background_color(Gtk.StateType.NORMAL, c)
+            print(date.format("%x")," - ",todaytime.format("%x")," = ",timediff)
         # buttons
         self.buttons["edit"] = Gtk.Button.new_from_icon_name(
             "document-edit-symbolic", 1)
