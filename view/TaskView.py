@@ -80,7 +80,7 @@ class TaskEditDialog(Gtk.Dialog):
 
     def on_date_selected(self, calendar):
         year, month, day = calendar.get_date()
-        self.set_calendar_date(year, month, day)
+        self.set_calendar_date(year, month+1, day)
 
     def on_date_cleared(self, button):
         self.calendartext.set_text("No date set")
@@ -102,10 +102,11 @@ class TaskView(Gtk.ListBoxRow):
         self.connect("modified", lambda widget,
                      title: self.task.set_title(title))
         self.buttons = dict()
-        self.refresh_layout(self.task)
+        self.refresh()
         self.connect("key-press-event", self.on_key_press)
 
-    def refresh_layout(self, task):
+    def refresh(self):
+        task = self.task
         # Cleanup first
         for child in self.get_children():
             self.remove(child)
@@ -118,6 +119,10 @@ class TaskView(Gtk.ListBoxRow):
         self.label.set_line_wrap(True)
         self.label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
         self.label.set_xalign(0)
+        # due date
+        if hasattr(task, "due_date") and task.due_date is not None:
+            date = GLib.DateTime.new_local(task.due_date.year, task.due_date.month, task.due_date.day, 0, 0, 0)
+            self.due_date = Gtk.Label(date.format("%x"))
         # buttons
         self.buttons["edit"] = Gtk.Button.new_from_icon_name(
             "document-edit-symbolic", 1)
@@ -135,7 +140,10 @@ class TaskView(Gtk.ListBoxRow):
         self.box.pack_start(self.drag_handle, False, False, 5)
         self.box.pack_start(self.label, True, True, 0)
         self.box.pack_end(buttonsbox, False, False, 0)
+        if hasattr(self, "due_date"):
+            self.box.pack_end(self.due_date, False, False, 0)
         self.add(self.box)
+        self.show_all()
 
     def on_modified(self, widget, title):
         self.emit("modified", title)
@@ -155,6 +163,6 @@ class TaskView(Gtk.ListBoxRow):
         response = dialog.run()
         if response == Gtk.ResponseType.APPLY:
             self.emit("modified", self.task.title)
-            self.label.set_text(self.task.title)
+            self.refresh()
         dialog.destroy()
 
