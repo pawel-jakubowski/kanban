@@ -245,6 +245,14 @@ class KanbanApplication(Gtk.Application):
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
+    style_provider = Gtk.CssProvider()
+    apppath = os.path.dirname(os.path.realpath(__file__))
+    style_provider.load_from_path(apppath + "/theme/Adwaita.css")
+    Gtk.StyleContext.add_provider_for_screen(
+        Gdk.Screen.get_default(),
+        style_provider,
+        Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+    )
     app = KanbanApplication()
     exit_status = app.run(sys.argv)
     sys.exit(exit_status)

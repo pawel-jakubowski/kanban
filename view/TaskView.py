@@ -39,12 +39,12 @@ class TaskEditDialog(Gtk.Dialog):
         buttonsbox.pack_start(calendarbutton, True, True, 0)
 
         datepopover = Gtk.Popover()
-        calendar = Gtk.Calendar()
-        calendar.connect("day-selected", self.on_date_selected)
+        self.calendar = Gtk.Calendar()
+        self.calendar.connect("day-selected", self.on_date_selected)
         nodatebutton = Gtk.Button("None")
         nodatebutton.connect("clicked", self.on_date_cleared)
         datebox = Gtk.Box.new(Gtk.Orientation.VERTICAL, 12)
-        datebox.pack_start(calendar, True, True, 0)
+        datebox.pack_start(self.calendar, True, True, 0)
         datebox.pack_end(nodatebutton, False, False, 0)
         datepopover.add(datebox)
         datepopover.show_all()
@@ -53,9 +53,9 @@ class TaskEditDialog(Gtk.Dialog):
 
         if hasattr(self.task, "due_date") and self.task.due_date is not None:
             d = self.task.due_date
-            self.set_calendar_date(d.year, d.month, d.day)
-            calendar.select_month(d.month, d.year)
-            calendar.select_day(d.day)
+            self.set_calendar_date(d.year, d.month-1, d.day)
+            self.calendar.select_month(d.month-1, d.year)
+            self.calendar.select_day(d.day)
 
         box = self.get_content_area()
         box.add(entrylabel)
@@ -63,6 +63,7 @@ class TaskEditDialog(Gtk.Dialog):
         box.add(calendarlabel)
         box.add(buttonsbox)
         self.show_all()
+        self.connect("response", self.on_response)
 
     def set_today(self):
         date = GLib.DateTime.new_now_local()
@@ -76,7 +77,6 @@ class TaskEditDialog(Gtk.Dialog):
     def set_calendar_date(self, year, month, day):
         date = GLib.DateTime.new_local(year, month, day, 0, 0, 0)
         self.calendartext.set_text(date.format("%x"))
-        self.task.set_due_date(year, month, day)
 
     def on_date_selected(self, calendar):
         year, month, day = calendar.get_date()
@@ -86,8 +86,13 @@ class TaskEditDialog(Gtk.Dialog):
         self.calendartext.set_text("No date set")
 
     def on_save(self, widget):
-        self.task.title = self.entry.get_text()
         self.emit("response", Gtk.ResponseType.APPLY)
+
+    def on_response(self, widget, response):
+        if response == Gtk.ResponseType.APPLY:
+            self.task.title = self.entry.get_text()
+            y, m, d = self.calendar.get_date()
+            self.task.set_due_date(y, m+1, d)
 
 class TaskView(Gtk.ListBoxRow):
 
@@ -102,6 +107,7 @@ class TaskView(Gtk.ListBoxRow):
         self.connect("modified", lambda widget,
                      title: self.task.set_title(title))
         self.buttons = dict()
+        self.get_style_context().add_class("taskview")
         self.refresh()
         self.connect("key-press-event", self.on_key_press)
 
@@ -125,19 +131,16 @@ class TaskView(Gtk.ListBoxRow):
             self.due_date = Gtk.Label(date.format("%x"))
             todaytime = GLib.DateTime.new_now_local()
             timediff = date.difference(todaytime) / (24 * 60 * 60 * 1000000)
+            sc = self.get_style_context()
+            sc.remove_class("priority-low")
+            sc.remove_class("priority-medium")
+            sc.remove_class("priority-high")
             if timediff < 1:
-                c = Gdk.RGBA()
-                c.parse("lightpink")
-                self.override_background_color(Gtk.StateType.NORMAL, c)
+                sc.add_class("priority-high")
             elif timediff < 2:
-                c = Gdk.RGBA()
-                c.parse("lightsalmon")
-                self.override_background_color(Gtk.StateType.NORMAL, c)
+                sc.add_class("priority-medium")
             elif timediff < 3:
-                c = Gdk.RGBA()
-                c.parse("yellow")
-                self.override_background_color(Gtk.StateType.NORMAL, c)
-            print(date.format("%x")," - ",todaytime.format("%x")," = ",timediff)
+                sc.add_class("priority-low")
         # buttons
         self.buttons["edit"] = Gtk.Button.new_from_icon_name(
             "document-edit-symbolic", 1)
