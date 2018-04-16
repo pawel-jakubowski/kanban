@@ -1,11 +1,18 @@
+.taskview {
+  padding-left: 6px;
+}
+
 .taskview.priority-low {
   border-left: solid 6px #f5eb00;
+  padding-left: 0px;
 }
 
 .taskview.priority-medium {
   border-left: solid 6px #f57900;
+  padding-left: 0px;
 }
 
 .taskview.priority-high {
   border-left: solid 6px #cc0000;
+  padding-left: 0px;
 }
