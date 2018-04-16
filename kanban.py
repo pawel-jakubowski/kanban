@@ -98,7 +98,7 @@ class KanbanWindow(Gtk.ApplicationWindow):
         self.add_accel_group(self.accelerators)
 
         self.settings = Gio.Settings.new("com.pjakubow.kanban")
-        self.connect("configure-event", lambda w,e: self.save_window_info())
+        self.connect("configure-event", lambda w, e: self.save_window_info())
         self.user_settings = user_settings
 
         self.active_board = ""
@@ -155,7 +155,8 @@ class KanbanWindow(Gtk.ApplicationWindow):
 
     def bind_accelerator(self, widget, accelerator, signal='clicked'):
         key, mod = Gtk.accelerator_parse(accelerator)
-        widget.add_accelerator(signal, self.accelerators, key, mod, Gtk.AccelFlags.VISIBLE)
+        widget.add_accelerator(signal, self.accelerators,
+                               key, mod, Gtk.AccelFlags.VISIBLE)
 
 
 class KanbanApplication(Gtk.Application):

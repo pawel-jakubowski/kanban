@@ -11,6 +11,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, Gio, GLib, GObject, Pango
 
+
 class TaskListView(Gtk.ListBox):
 
     __gsignals__ = {
@@ -34,9 +35,12 @@ class TaskListView(Gtk.ListBox):
         board.connect("task-move-up", lambda w, listname: self.move_up())
         board.connect("task-move-down", lambda w, listname: self.move_down())
         board.connect("task-move-top", lambda w, listname: self.move_top())
-        board.connect("task-move-bottom", lambda w, listname: self.move_bottom())
-        board.connect("task-move-left-top", lambda w, listname: self.move_to_prev_list(listname))
-        board.connect("task-move-right-top", lambda w, listname: self.move_to_next_list(listname))
+        board.connect("task-move-bottom", lambda w,
+                      listname: self.move_bottom())
+        board.connect("task-move-left-top", lambda w,
+                      listname: self.move_to_prev_list(listname))
+        board.connect("task-move-right-top", lambda w,
+                      listname: self.move_to_next_list(listname))
 
     def get_title(self):
         return self.tasklist.title
@@ -76,7 +80,7 @@ class TaskListView(Gtk.ListBox):
         if position > 0:
             self.unselect_row(task)
             self.remove_task(task)
-            self.insert_task(task, position-1)
+            self.insert_task(task, position - 1)
             self.select_row(task)
             task.grab_focus()
 
@@ -85,10 +89,10 @@ class TaskListView(Gtk.ListBox):
         if task is None:
             return
         position = task.get_index()
-        if position < len(self.tasklist.tasks)-1:
+        if position < len(self.tasklist.tasks) - 1:
             self.unselect_row(task)
             self.remove_task(task)
-            self.insert_task(task, position+1)
+            self.insert_task(task, position + 1)
             self.select_row(task)
             task.grab_focus()
 
@@ -109,7 +113,7 @@ class TaskListView(Gtk.ListBox):
         if task is None:
             return
         position = task.get_index()
-        lastelem = len(self.tasklist.tasks)-1
+        lastelem = len(self.tasklist.tasks) - 1
         if position < lastelem:
             self.unselect_row(task)
             self.remove_task(task)
@@ -168,11 +172,11 @@ class TaskListView(Gtk.ListBox):
         task_view.target_entry = Gtk.TargetEntry.new(
             "GTK_LIST_BOX_ROW", Gtk.TargetFlags.SAME_APP, 0)
         task_view.drag_handle.drag_source_set(Gdk.ModifierType.BUTTON1_MASK, [
-                                         task_view.target_entry], Gdk.DragAction.MOVE)
+            task_view.target_entry], Gdk.DragAction.MOVE)
         task_view.drag_handle.connect("drag-begin", self.on_drag_begin)
         task_view.drag_handle.connect("drag-data-get", self.on_drag_data_get)
         task_view.drag_dest_set(Gtk.DestDefaults.ALL, [
-                           task_view.target_entry], Gdk.DragAction.MOVE)
+            task_view.target_entry], Gdk.DragAction.MOVE)
         task_view.connect("drag-data-received", self.on_drag_data_received)
 
     def on_drag_begin(self, widget, drag_context):
@@ -252,18 +256,29 @@ class BoardView(Gtk.Box):
         self.set_homogeneous(True)
 
         self.window.bind_accelerator(self, "<Alt>Up", "signal-task-move-up")
-        self.window.bind_accelerator(self, "<Alt>Down", "signal-task-move-down")
-        self.window.bind_accelerator(self, "<Alt><Shift>Up", "signal-task-move-top")
-        self.window.bind_accelerator(self, "<Alt><Shift>Down", "signal-task-move-bottom")
-        self.window.bind_accelerator(self, "<Alt>Left", "signal-task-move-left-top")
-        self.window.bind_accelerator(self, "<Alt>Right", "signal-task-move-right-top")
+        self.window.bind_accelerator(
+            self, "<Alt>Down", "signal-task-move-down")
+        self.window.bind_accelerator(
+            self, "<Alt><Shift>Up", "signal-task-move-top")
+        self.window.bind_accelerator(
+            self, "<Alt><Shift>Down", "signal-task-move-bottom")
+        self.window.bind_accelerator(
+            self, "<Alt>Left", "signal-task-move-left-top")
+        self.window.bind_accelerator(
+            self, "<Alt>Right", "signal-task-move-right-top")
         self.window.bind_accelerator(self, "Escape", "signal-exit")
-        self.connect("signal-task-move-up", lambda w: self.emit("task-move-up", self.get_focus_list_name()))
-        self.connect("signal-task-move-down", lambda w: self.emit("task-move-down", self.get_focus_list_name()))
-        self.connect("signal-task-move-top", lambda w: self.emit("task-move-top", self.get_focus_list_name()))
-        self.connect("signal-task-move-bottom", lambda w: self.emit("task-move-bottom", self.get_focus_list_name()))
-        self.connect("signal-task-move-left-top", lambda w: self.emit("task-move-left-top", self.get_focus_list_name()))
-        self.connect("signal-task-move-right-top", lambda w: self.emit("task-move-right-top", self.get_focus_list_name()))
+        self.connect("signal-task-move-up",
+                     lambda w: self.emit("task-move-up", self.get_focus_list_name()))
+        self.connect("signal-task-move-down",
+                     lambda w: self.emit("task-move-down", self.get_focus_list_name()))
+        self.connect("signal-task-move-top",
+                     lambda w: self.emit("task-move-top", self.get_focus_list_name()))
+        self.connect("signal-task-move-bottom",
+                     lambda w: self.emit("task-move-bottom", self.get_focus_list_name()))
+        self.connect("signal-task-move-left-top",
+                     lambda w: self.emit("task-move-left-top", self.get_focus_list_name()))
+        self.connect("signal-task-move-right-top",
+                     lambda w: self.emit("task-move-right-top", self.get_focus_list_name()))
         self.connect("signal-exit", self.on_back_clicked)
 
         hb = Gtk.HeaderBar(show_close_button=True)
@@ -355,8 +370,8 @@ class BoardListView(Gtk.ScrolledWindow):
 
     def create_new_board(self):
         dialog = Gtk.Dialog("Create new board", self.window, 0,
-            (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-             Gtk.STOCK_OK, Gtk.ResponseType.OK), flags=Gtk.DialogFlags.MODAL)
+                            (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                             Gtk.STOCK_OK, Gtk.ResponseType.OK), flags=Gtk.DialogFlags.MODAL)
         entry = Gtk.Entry()
         box = dialog.get_content_area()
         box.set_margin_right(10)

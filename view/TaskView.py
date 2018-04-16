@@ -1,6 +1,5 @@
 from model.Task import Task
 from .TextEntry import TextEntry,ActivableTextEntry
-from .TextEntry import TextEntry,ActivableTextEntry
 
 import gi
 gi.require_version("Gtk", "3.0")
@@ -128,7 +127,8 @@ class TaskView(Gtk.ListBoxRow):
         # due date
         if hasattr(task, "due_date") and task.due_date is not None:
             date = GLib.DateTime.new_local(task.due_date.year, task.due_date.month, task.due_date.day, 0, 0, 0)
-            self.due_date = Gtk.Label(date.format("%x"))
+            self.due_date = Gtk.Label(date.format("%e %b"))
+            self.due_date.get_style_context().add_class("due-date")
             todaytime = GLib.DateTime.new_now_local()
             timediff = date.difference(todaytime) / (24 * 60 * 60 * 1000000)
             sc = self.get_style_context()

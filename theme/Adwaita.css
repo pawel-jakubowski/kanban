@@ -16,3 +16,10 @@
   border-left: solid 6px #cc0000;
   padding-left: 0px;
 }
+
+.due-date {
+  color: lighter(CurrentColor);
+  border-radius: 3px;
+  padding: 5px;
+}
+
