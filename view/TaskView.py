@@ -52,9 +52,9 @@ class TaskEditDialog(Gtk.Dialog):
 
         if hasattr(self.task, "due_date") and self.task.due_date is not None:
             d = self.task.due_date
-            self.set_calendar_date(d.year, d.month-1, d.day)
-            self.calendar.select_month(d.month-1, d.year)
-            self.calendar.select_day(d.day)
+            self.set_calendar_date(d.year, d.month, d.day)
+        else:
+            self.calendar.select_day(0)
 
         box = self.get_content_area()
         box.add(entrylabel)
@@ -74,15 +74,23 @@ class TaskEditDialog(Gtk.Dialog):
         self.set_calendar_date(date.get_year(), date.get_month(), date.get_day_of_month())
 
     def set_calendar_date(self, year, month, day):
+        self.calendar.select_month(month-1, year)
+        self.calendar.select_day(day)
+        self.set_calendar_label(year, month, day)
+
+    def set_calendar_label(self, year, month, day):
+        if day == 0:
+            return
         date = GLib.DateTime.new_local(year, month, day, 0, 0, 0)
         self.calendartext.set_text(date.format("%x"))
 
     def on_date_selected(self, calendar):
         year, month, day = calendar.get_date()
-        self.set_calendar_date(year, month+1, day)
+        self.set_calendar_label(year, month+1, day)
 
     def on_date_cleared(self, button):
         self.calendartext.set_text("No date set")
+        self.calendar.select_day(0)
 
     def on_save(self, widget):
         self.emit("response", Gtk.ResponseType.APPLY)
@@ -91,7 +99,10 @@ class TaskEditDialog(Gtk.Dialog):
         if response == Gtk.ResponseType.APPLY:
             self.task.title = self.entry.get_text()
             y, m, d = self.calendar.get_date()
-            self.task.set_due_date(y, m+1, d)
+            if d != 0:
+                self.task.set_due_date(y, m+1, d)
+            else:
+                self.task.due_date = None
 
 class TaskView(Gtk.ListBoxRow):
 
@@ -125,16 +136,16 @@ class TaskView(Gtk.ListBoxRow):
         self.label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
         self.label.set_xalign(0)
         # due date
+        sc = self.get_style_context()
+        sc.remove_class("priority-low")
+        sc.remove_class("priority-medium")
+        sc.remove_class("priority-high")
         if hasattr(task, "due_date") and task.due_date is not None:
             date = GLib.DateTime.new_local(task.due_date.year, task.due_date.month, task.due_date.day, 0, 0, 0)
             self.due_date = Gtk.Label(date.format("%e %b"))
             self.due_date.get_style_context().add_class("due-date")
             todaytime = GLib.DateTime.new_now_local()
             timediff = date.difference(todaytime) / (24 * 60 * 60 * 1000000)
-            sc = self.get_style_context()
-            sc.remove_class("priority-low")
-            sc.remove_class("priority-medium")
-            sc.remove_class("priority-high")
             if timediff < 1:
                 sc.add_class("priority-high")
             elif timediff < 2:
@@ -158,7 +169,7 @@ class TaskView(Gtk.ListBoxRow):
         self.box.pack_start(self.drag_handle, False, False, 5)
         self.box.pack_start(self.label, True, True, 0)
         self.box.pack_end(buttonsbox, False, False, 0)
-        if hasattr(self, "due_date"):
+        if hasattr(self, "due_date") and task.due_date is not None:
             self.box.pack_end(self.due_date, False, False, 0)
         self.add(self.box)
         self.show_all()
