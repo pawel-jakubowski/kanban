@@ -12,6 +12,8 @@ cd kanban
 ```
 python3 kanban.py
 ```
+![Kanban list](https://raw.githubusercontent.com/pawel-jakubowski/kanban/master/img/kanban_list.png)
+![Kanban boards](https://raw.githubusercontent.com/pawel-jakubowski/kanban/master/img/kanban_boards.png)
 
 ## Tips
 Example *.desktop file
