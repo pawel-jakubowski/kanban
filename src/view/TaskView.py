@@ -1,23 +1,51 @@
-from model.Task import Task
-from .TextEntry import TextEntry,ActivableTextEntry
+# TaskView.py
+#
+# Copyright (C) 2018 Pawel Jakubowski
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE X CONSORTIUM BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# Except as contained in this notice, the name(s) of the above copyright
+# holders shall not be used in advertising or otherwise to promote the sale,
+# use or other dealings in this Software without prior written
+# authorization.
 
-import gi
-gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GObject, Pango, GLib
+from .gi_composites import GtkTemplate
 
+from .Task import Task
+from .TextEntry import TextEntry, ActivableTextEntry
 
+#TODO use GtkTemplate
 class TaskEditDialog(Gtk.Dialog):
 
     def __init__(self, window, task):
-        Gtk.Dialog.__init__(self, "Task edit", window, 0,
-            (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-             Gtk.STOCK_SAVE, Gtk.ResponseType.APPLY))
+        super().__init__(self, "Task edit", window, 0,
+                         (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                          Gtk.STOCK_SAVE, Gtk.ResponseType.APPLY))
 
         self.task = task
 
         entrylabel = Gtk.Label("Title", xalign=0)
         self.entry = TextEntry(self.task.title)
-        self.entry.connect("modified-cancel", lambda w: self.emit("response", Gtk.ResponseType.CANCEL))
+        self.entry.connect(
+            "modified-cancel", lambda w: self.emit("response", Gtk.ResponseType.CANCEL))
         self.entry.connect("modified-save", self.on_save)
 
         calendarlabel = Gtk.Label("Due Date", xalign=0)
@@ -66,15 +94,17 @@ class TaskEditDialog(Gtk.Dialog):
 
     def set_today(self):
         date = GLib.DateTime.new_now_local()
-        self.set_calendar_date(date.get_year(), date.get_month(), date.get_day_of_month())
+        self.set_calendar_date(
+            date.get_year(), date.get_month(), date.get_day_of_month())
 
     def set_tomorrow(self):
         date = GLib.DateTime.new_now_local()
         date = date.add_days(1)
-        self.set_calendar_date(date.get_year(), date.get_month(), date.get_day_of_month())
+        self.set_calendar_date(
+            date.get_year(), date.get_month(), date.get_day_of_month())
 
     def set_calendar_date(self, year, month, day):
-        self.calendar.select_month(month-1, year)
+        self.calendar.select_month(month - 1, year)
         self.calendar.select_day(day)
         self.set_calendar_label(year, month, day)
 
@@ -86,7 +116,7 @@ class TaskEditDialog(Gtk.Dialog):
 
     def on_date_selected(self, calendar):
         year, month, day = calendar.get_date()
-        self.set_calendar_label(year, month+1, day)
+        self.set_calendar_label(year, month + 1, day)
 
     def on_date_cleared(self, button):
         self.calendartext.set_text("No date set")
@@ -100,50 +130,51 @@ class TaskEditDialog(Gtk.Dialog):
             self.task.title = self.entry.get_text()
             y, m, d = self.calendar.get_date()
             if d != 0:
-                self.task.set_due_date(y, m+1, d)
+                self.task.set_due_date(y, m + 1, d)
             else:
                 self.task.due_date = None
 
+
+@GtkTemplate(ui='/org/gnome/kanban/ui/task.ui')
 class TaskView(Gtk.ListBoxRow):
+    __gtype_name__ = 'TaskView'
 
     __gsignals__ = {
         "modified": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
         "delete": (GObject.SIGNAL_RUN_FIRST, None, ())
     }
 
+    drag_handle, \
+        label, \
+        endbox, \
+        editbutton, \
+        deletebutton, \
+        due_date = GtkTemplate.Child().widgets(6)
+
     def __init__(self, task, board):
-        super(Gtk.ListBoxRow, self).__init__()
+        super().__init__()
+        self.init_template()
         self.task = task
         self.connect("modified", lambda widget,
                      title: self.task.set_title(title))
-        self.buttons = dict()
-        self.get_style_context().add_class("taskview")
-        self.refresh()
         self.connect("key-press-event", self.on_key_press)
+        self.editbutton.connect("clicked", self.on_edit_clicked)
+        self.deletebutton.connect("clicked", lambda w: self.emit("delete"))
+        self.refresh()
 
     def refresh(self):
         task = self.task
-        # Cleanup first
-        for child in self.get_children():
-            self.remove(child)
-        # drag handle
-        self.drag_handle = Gtk.EventBox().new()
-        self.drag_handle.add(
-            Gtk.Image().new_from_icon_name("open-menu-symbolic", 1))
         # entry
-        self.label = Gtk.Label(task.title)
-        self.label.set_line_wrap(True)
-        self.label.set_line_wrap_mode(Pango.WrapMode.WORD_CHAR)
-        self.label.set_xalign(0)
+        self.label.set_text(task.title)
         # due date
         sc = self.get_style_context()
         sc.remove_class("priority-low")
         sc.remove_class("priority-medium")
         sc.remove_class("priority-high")
         if hasattr(task, "due_date") and task.due_date is not None:
-            date = GLib.DateTime.new_local(task.due_date.year, task.due_date.month, task.due_date.day, 0, 0, 0)
-            self.due_date = Gtk.Label(date.format("%e %b"))
-            self.due_date.get_style_context().add_class("due-date")
+            date = GLib.DateTime.new_local(
+                task.due_date.year, task.due_date.month, task.due_date.day, 0, 0, 0)
+            self.due_date.set_text(date.format("%e %b"))
             todaytime = GLib.DateTime.new_now_local()
             timediff = date.difference(todaytime) / (24 * 60 * 60 * 1000000)
             if timediff < 1:
@@ -152,26 +183,8 @@ class TaskView(Gtk.ListBoxRow):
                 sc.add_class("priority-medium")
             elif timediff < 3:
                 sc.add_class("priority-low")
-        # buttons
-        self.buttons["edit"] = Gtk.Button.new_from_icon_name(
-            "document-edit-symbolic", 1)
-        self.buttons["edit"].connect("clicked", self.on_edit_clicked)
-        self.buttons["edit"].set_can_focus(False)
-        self.buttons["delete"] = Gtk.Button.new_from_icon_name(
-            "user-trash-full-symbolic", 1)
-        self.buttons["delete"].connect("clicked", lambda w: self.emit("delete"))
-        self.buttons["delete"].set_can_focus(False)
-        buttonsbox = Gtk.Box(spacing=1)
-        for name, button in self.buttons.items():
-            buttonsbox.pack_start(button, False, False, 0)
-        # Add all elements
-        self.box = Gtk.Box(spacing=2)
-        self.box.pack_start(self.drag_handle, False, False, 5)
-        self.box.pack_start(self.label, True, True, 0)
-        self.box.pack_end(buttonsbox, False, False, 0)
-        if hasattr(self, "due_date") and task.due_date is not None:
-            self.box.pack_end(self.due_date, False, False, 0)
-        self.add(self.box)
+        else:
+            self.due_date.set_text("")
         self.show_all()
 
     def on_modified(self, widget, title):
@@ -183,9 +196,9 @@ class TaskView(Gtk.ListBoxRow):
             return
         k = event.keyval
         if k == Gdk.KEY_Return:
-            self.buttons["edit"].clicked()
+            self.editbutton.clicked()
         elif k == Gdk.KEY_Delete:
-            self.buttons["delete"].clicked()
+            self.deletebutton.clicked()
 
     def on_edit_clicked(self, button):
         dialog = TaskEditDialog(self.get_ancestor(Gtk.Window), self.task)
@@ -194,4 +207,3 @@ class TaskView(Gtk.ListBoxRow):
             self.emit("modified", self.task.title)
             self.refresh()
         dialog.destroy()
-

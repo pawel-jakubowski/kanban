@@ -1,2 +1,0 @@
-pycairo>=1.15.3
-pygobject>=3.26.1

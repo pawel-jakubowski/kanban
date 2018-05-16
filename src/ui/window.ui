@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="KanbanWindow" parent="GtkApplicationWindow">
+    <property name="default-width">800</property>
+    <property name="default-height">600</property>
+    <property name="border-width">20</property>
+    <child type="titlebar">
+      <object class="GtkHeaderBar" id="header_bar">
+        <property name="visible">true</property>
+        <property name="show-close-button">true</property>
+        <property name="title">Kanban</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkBox"></object>
+    </child>
+  </template>
+</interface>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/org/gnome/kanban">
+    <file compressed="true" preprocess="xml-stripblanks">ui/board.ui</file>
+    <file compressed="true" preprocess="xml-stripblanks">ui/boardlist.ui</file>
+    <file compressed="true" preprocess="xml-stripblanks">ui/menus.ui</file>
+    <file compressed="true" preprocess="xml-stripblanks">ui/task.ui</file>
+    <file compressed="true" preprocess="xml-stripblanks">ui/window.ui</file>
+  </gresource>
+  <gresource prefix="/org/gnome/kanban/themes">
+    <file compressed="true" alias="Adwaita.css">../data/themes/Adwaita.css</file>
+  </gresource>
+</gresources>

@@ -1,0 +1,9 @@
+data/org.gnome.kanban.desktop.in
+data/org.gnome.kanban.appdata.xml.in
+data/org.gnome.kanban.gschema.xml
+src/window.ui
+
+
+
+src/main.py
+src/window.py

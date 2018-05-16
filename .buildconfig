@@ -1,0 +1,9 @@
+[default]
+name=Default
+runtime=host
+config-opts=
+run-opts=
+prefix=/home/pjakubow/.cache/gnome-builder/install/kanban/host
+app-id=
+postbuild=
+prebuild=

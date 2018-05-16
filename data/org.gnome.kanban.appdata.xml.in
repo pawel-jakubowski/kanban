@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop">
+  <id>org.gnome.kanban.desktop</id>
+  <licence>CC0</licence>
+	<project_license>MIT</project_license>
+  <name>Kanban</name>
+  <summary>GNOME project management application (like trello) written in python</summary>
+  <description/>
+  <url type="homepage">https://github.com/pawel-jakubowski/kanban</url>
+  <developer_name>Paweł Jakubowski</developer_name>
+</component>
+

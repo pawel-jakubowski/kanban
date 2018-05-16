@@ -1,0 +1,50 @@
+{
+    "app-id" : "org.gnome.kanban",
+    "runtime" : "org.gnome.Platform",
+    "runtime-version" : "3.26",
+    "sdk" : "org.gnome.Sdk",
+    "command" : "kanban",
+    "finish-args" : [
+        "--share=network",
+        "--share=ipc",
+        "--socket=x11",
+        "--socket=wayland",
+        "--filesystem=xdg-run/dconf",
+        "--filesystem=~/.config/dconf:ro",
+        "--talk-name=ca.desrt.dconf",
+        "--env=DCONF_USER_CONFIG_DIR=.config/dconf",
+        "--filesystem=~/.config/kanban"
+    ],
+    "cleanup" : [
+        "/include",
+        "/lib/pkgconfig",
+        "/man",
+        "/share/doc",
+        "/share/gtk-doc",
+        "/share/man",
+        "/share/pkgconfig",
+        ".debug_data",
+        "*.la",
+        "*.a"
+    ],
+    "modules" : [
+        {
+            "name" : "kanban",
+            "buildsystem" : "meson",
+            "builddir" : true,
+            "sources" : [
+                {
+                    "type" : "git",
+                    "url" : "https://github.com/pawel-jakubowski/kanban.git"
+                }
+            ]
+        }
+    ],
+    "build-options" : {
+        "env" : {
+        }
+    },
+    "x-run-args" : [
+        "--debug"
+    ]
+}

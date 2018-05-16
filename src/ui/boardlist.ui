@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="BoardListView" parent="GtkScrolledWindow">
+    <child>
+      <!-- titlebar -->
+      <object class="GtkHeaderBar" id="headerbar">
+        <property name="visible">true</property>
+        <property name="show-close-button">true</property>
+        <property name="title">Kanban</property>
+        <child>
+          <object class="GtkBox">
+            <child>
+              <object class="GtkButton" id="button">
+                <property name="label">New Board</property>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+      <!-- content -->
+      <object class="GtkListBox" id="list">
+        <property name="selection-mode">single</property>
+      </object>
+    </child>
+  </template>
+</interface>

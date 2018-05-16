@@ -1,7 +1,34 @@
-import gi
-gi.require_version("Gtk", "3.0")
+# TextEntry.py
+#
+# Copyright (C) 2018 Pawel Jakubowski
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE X CONSORTIUM BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# Except as contained in this notice, the name(s) of the above copyright
+# holders shall not be used in advertising or otherwise to promote the sale,
+# use or other dealings in this Software without prior written
+# authorization.
+
 from gi.repository import Gtk, Gdk, GObject, Pango
 
+#TODO use GtkTemplate
 class TextEntry(Gtk.TextView):
 
     __gsignals__ = {
@@ -10,7 +37,7 @@ class TextEntry(Gtk.TextView):
     }
 
     def __init__(self, data=""):
-        super(Gtk.TextView, self).__init__()
+        super().__init__()
         self.set_accepts_tab(False)
         self.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
         self.set_justification(Gtk.Justification.LEFT)
@@ -30,6 +57,7 @@ class TextEntry(Gtk.TextView):
         elif event.keyval == Gdk.KEY_Escape:
             self.emit("modified-cancel")
 
+#TODO use GtkTemplate
 class ActivableTextEntry(Gtk.Box):
 
     __gsignals__ = {
@@ -40,7 +68,7 @@ class ActivableTextEntry(Gtk.Box):
     }
 
     def __init__(self, data=""):
-        super(Gtk.Box, self).__init__()
+        super().__init__()
         self.show_handler = self.connect("show", self.on_show)
 
         self.label = Gtk.Label(data)
@@ -92,5 +120,3 @@ class ActivableTextEntry(Gtk.Box):
     def on_show(self, widget):
         self.entry.hide()
         self.disconnect(self.show_handler)
-
-

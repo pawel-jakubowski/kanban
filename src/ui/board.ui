@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="BoardView" parent="GtkBox">
+    <property name="homogeneous">true</property>
+    <child>
+      <!-- titlebar -->
+      <object class="GtkHeaderBar" id="headerbar">
+        <property name="visible">true</property>
+        <property name="show-close-button">true</property>
+        <child>
+          <object class="GtkBox">
+            <child>
+              <object class="GtkButton" id="returnbutton">
+                <child>
+                  <object class="GtkArrow">
+                    <property name="arrow-type">left</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+      <!-- content -->
+      <object class="GtkBox"></object>
+    </child>
+  </template>
+</interface>

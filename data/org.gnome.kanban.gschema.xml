@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="kanban">
-  <schema id="com.pjakubow.kanban" path="/com/pjakubow/kanban/">
+  <schema id="org.gnome.kanban" path="/org/gnome/kanban/">
     <key name="window-maximized" type="b">
-      <default>true</default>
+      <default>false</default>
       <summary>Window maximized</summary>
       <description>Window maximized state</description>
     </key>
@@ -23,3 +23,4 @@
     </key>
   </schema>
 </schemalist>
+
