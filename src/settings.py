@@ -71,10 +71,10 @@ class KanbanSettings:
                     print("new configuration for the same board is present - old configuration ignored.")
                 else:
                     print("converting", config_path, "to json...")
-                self.load_pkl(config_path)
-                self.save()
-                if not os.path.exists(json_equivalent):
-                    raise RuntimeError("Converting error " + config_path)
+                    self.load_pkl(config_path)
+                    self.save()
+                    if not os.path.exists(json_equivalent):
+                        raise RuntimeError("Converting error " + config_path)
 
     def load_json(self, filepath):
         print("load from", filepath)

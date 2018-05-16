@@ -26,7 +26,7 @@
 # use or other dealings in this Software without prior written
 # authorization.
 
-from gi.repository import Gtk, Gio
+from gi.repository import Gtk, Gio, GLib
 from .gi_composites import GtkTemplate
 
 from .BoardView import BoardView
@@ -45,6 +45,7 @@ class KanbanWindow(Gtk.ApplicationWindow):
         self.accelerators = Gtk.AccelGroup()
         self.add_accel_group(self.accelerators)
         self.settings = Gio.Settings.new("org.gnome.kanban")
+        self.connect("configure-event", lambda w, e: self.save_window_info())
         self.user_settings = KanbanSettings(config_dir)
         self.load_settings()
 
@@ -89,3 +90,14 @@ class KanbanWindow(Gtk.ApplicationWindow):
             self.draw_board(board)
         else:
             self.draw_boards_list()
+
+    def save_window_info(self):
+        self.settings.set_boolean("window-maximized", self.is_maximized())
+        w, h = self.get_size()
+        self.settings.set_value("window-size", GLib.Variant("ai", [w, h]))
+        x, y = self.get_position()
+        self.settings.set_value("window-position", GLib.Variant("ai", [x, y]))
+
+    def save_board_info(self):
+        print("save board", self.active_board)
+        self.settings.set_string("selected-board", self.active_board)

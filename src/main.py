@@ -69,6 +69,7 @@ class Application(Gtk.Application):
         win = self.props.active_window
         if not win:
             win = KanbanWindow(application=self, config_dir=self.config_dir)
+        win.connect("destroy", self.on_quit)
         win.present()
 
     def do_command_line(self, command_line):
@@ -117,9 +118,9 @@ class Application(Gtk.Application):
         about_dialog.present()
 
     def on_quit(self, param):
-        if self.window is not None:
-            self.window.save_board_info()
-            self.window.user_settings.save()
+        if self.props.active_window is not None:
+            self.props.active_window.save_board_info()
+            self.props.active_window.user_settings.save()
 
 
 def main(version):
