@@ -36,7 +36,7 @@ from .TextEntry import TextEntry, ActivableTextEntry
 class TaskEditDialog(Gtk.Dialog):
 
     def __init__(self, window, task):
-        super().__init__(self, "Task edit", window, 0,
+        super().__init__("Task edit", window, 0,
                          (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
                           Gtk.STOCK_SAVE, Gtk.ResponseType.APPLY))
 
