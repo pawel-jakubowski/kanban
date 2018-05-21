@@ -3,6 +3,7 @@ Type=Application
 Name=Kanban
 Exec=kanban
 Terminal=false
+Icon=applications-office
 Comment=GNOME project management application (like trello) written in python
 Categories=GTK;
 StartupNotify=true
