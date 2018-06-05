@@ -1,5 +1,5 @@
 project('kanban',
-  version: '0.6.4',
+  version: '0.6.5',
   license: 'MIT_X11',
   meson_version: '>= 0.40.0',
 )

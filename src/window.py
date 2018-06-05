@@ -51,9 +51,14 @@ class KanbanWindow(Gtk.ApplicationWindow):
 
     def draw_boards_list(self):
         self.clean()
-        self.add(BoardListView(self.user_settings, self))
+        blv = BoardListView(self.user_settings, self)
+        self.add(blv)
         self.active_board = ""
         self.show_all()
+        if len(blv.list.get_children()) > 0:
+            first_elem = blv.list.get_children()[0]
+            blv.list.select_row(first_elem)
+            first_elem.grab_focus()
 
     def draw_board(self, name):
         self.clean()

@@ -92,10 +92,6 @@ class BoardListView(Gtk.ScrolledWindow):
             self.list.remove(child)
         for board in self.settings.boards:
             self.list.add(BoardListRow(board))
-        if len(self.list.get_children()) > 0:
-            first_elem = self.list.get_children()[0]
-            self.list.select_row(first_elem)
-            first_elem.grab_focus()
         self.show_all()
 
     def on_row_activated(self, listbox, row):
