@@ -58,6 +58,10 @@ class NewTask(Gtk.ListBoxRow):
             self.entry.uneditable()
         else:
             self.entry.editable()
+            sw = self.get_ancestor(Gtk.ScrolledWindow)
+            vadj = sw.get_vadjustment()
+            vadj.set_value(vadj.get_upper())
+            sw.set_vadjustment(vadj)
 
     def on_button_press(self, widget, event):
         if widget is self and event.button == Gdk.BUTTON_PRIMARY:
