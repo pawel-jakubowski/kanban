@@ -40,6 +40,8 @@ class TaskListView(Gtk.ListBox):
         "modified": (GObject.SIGNAL_RUN_FIRST, None, ())
     }
 
+    handlers = []
+
     def __init__(self, tasklist, board):
         super().__init__()
         self.tasklist = tasklist
@@ -48,8 +50,11 @@ class TaskListView(Gtk.ListBox):
         for t in tasklist.tasks:
             task_view = TaskView(t, board)
             self.set_drag_and_drop(task_view)
-            task_view.connect("delete", self.on_task_delete)
-            task_view.connect("modified", self.on_task_modified)
+            index = len(self.get_children())
+            h = []
+            h.append(task_view.connect("delete", self.on_task_delete))
+            h.append(task_view.connect("modified", self.on_task_modified))
+            self.handlers.append(h)
             self.add(task_view)
         new_task = NewTask()
         new_task.connect("modified", lambda w, text: self.add_task(Task(text)))
@@ -81,19 +86,25 @@ class TaskListView(Gtk.ListBox):
     def add_task(self, task):
         task_view = TaskView(task, self.board)
         self.set_drag_and_drop(task_view)
-        task_view.connect("delete", self.on_task_delete)
-        task_view.connect("modified", self.on_task_modified)
         # insert before NewTask
         self.insert_task(task_view, len(self.tasklist.tasks))
         task_view.show_all()
 
     def insert_task(self, task_view, index):
+        h = []
+        h.append(task_view.connect("delete", self.on_task_delete))
+        h.append(task_view.connect("modified", self.on_task_modified))
+        self.handlers.insert(index, h)
         self.insert(task_view, index)
         self.tasklist.insert(index, task_view.task)
         self.emit("modified")
 
     def remove_task(self, task_view):
-        self.tasklist.remove(task_view.get_index())
+        index = task_view.get_index()
+        self.tasklist.remove(index)
+        for h in self.handlers[index]:
+            task_view.disconnect(h)
+        del self.handlers[index]
         self.remove(task_view)
         self.emit("modified")
 
