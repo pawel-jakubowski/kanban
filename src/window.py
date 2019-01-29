@@ -77,6 +77,10 @@ class KanbanWindow(Gtk.ApplicationWindow):
         widget.add_accelerator(signal, self.accelerators,
                                key, mod, Gtk.AccelFlags.VISIBLE)
 
+    def remove_accelerator(self, widget, accelerator):
+        key, mod = Gtk.accelerator_parse(accelerator)
+        widget.remove_accelerator(self.accelerators, key, mod)
+
     def load_settings(self):
         size = self.settings.get_value("window-size")
         self.resize(size[0], size[1])

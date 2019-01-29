@@ -121,7 +121,7 @@ class Application(Gtk.Application):
         if self.props.active_window is not None:
             self.props.active_window.save_board_info()
             self.props.active_window.user_settings.save()
-
+        self.quit()
 
 def main(version):
     style_provider = Gtk.CssProvider()

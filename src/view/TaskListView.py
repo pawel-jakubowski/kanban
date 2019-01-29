@@ -57,6 +57,8 @@ class TaskListView(Gtk.ListBox):
             self.handlers.append(h)
             self.add(task_view)
         new_task = NewTask()
+        new_task.connect("enter", self.on_new_task_enter)
+        new_task.connect("closed", self.on_new_task_closed)
         new_task.connect("modified", lambda w, text: self.add_task(Task(text)))
         self.add(new_task)
         board.connect("task-move-up", lambda w, listname: self.move_up())
@@ -243,3 +245,9 @@ class TaskListView(Gtk.ListBox):
         info["index"] = widget.get_ancestor(TaskView).get_index()
         data.set(Gdk.Atom.intern_static_string(
             "GTK_LIST_BOX_ROW"), 32, pickle.dumps(info))
+
+    def on_new_task_enter(self, widget):
+        self.board.remove_noneditable_accelerators()
+
+    def on_new_task_closed(self, widget):
+        self.board.add_noneditable_accelerators()

@@ -72,7 +72,7 @@ class BoardView(Gtk.Box):
             self, "<Alt>Left", "signal-task-move-left-top")
         self.window.bind_accelerator(
             self, "<Alt>Right", "signal-task-move-right-top")
-        self.window.bind_accelerator(self, "Escape", "signal-exit")
+        self.add_noneditable_accelerators()
         self.connect("signal-task-move-up",
                      lambda w: self.emit("task-move-up", self.get_focus_list_name()))
         self.connect("signal-task-move-down",
@@ -92,6 +92,12 @@ class BoardView(Gtk.Box):
         self.returnbutton.connect("clicked", self.on_back_clicked)
 
         self.refresh()
+
+    def add_noneditable_accelerators(self):
+        self.window.bind_accelerator(self, "Escape", "signal-exit")
+
+    def remove_noneditable_accelerators(self):
+        self.window.remove_accelerator(self, "Escape")
 
     def get_focus_list_name(self):
         return self.get_focus_child().get_tasklist().get_title()

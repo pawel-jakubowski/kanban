@@ -35,7 +35,9 @@ from .TextEntry import TextEntry, ActivableTextEntry
 class NewTask(Gtk.ListBoxRow):
 
     __gsignals__ = {
-        "modified": (GObject.SIGNAL_RUN_FIRST, None, (str,))
+        "enter": (GObject.SIGNAL_RUN_FIRST, None, ()),
+        "modified": (GObject.SIGNAL_RUN_FIRST, None, (str,)),
+        "closed": (GObject.SIGNAL_RUN_FIRST, None, ())
     }
 
     def __init__(self):
@@ -58,6 +60,7 @@ class NewTask(Gtk.ListBoxRow):
             self.entry.uneditable()
         else:
             self.entry.editable()
+            self.emit("enter")
             sw = self.get_ancestor(Gtk.ScrolledWindow)
             vadj = sw.get_vadjustment()
             vadj.set_value(vadj.get_upper())
@@ -81,6 +84,7 @@ class NewTask(Gtk.ListBoxRow):
 
     def on_cancel(self, widget):
         widget.clear()
+        self.emit("closed")
 
     def on_editable_changed(self, widget, is_editable):
         if not is_editable:
